@@ -672,8 +672,27 @@ function detectActiveGradeCols(rows, dataStart, studentRowIndexes) {
   });
 }
 
+function getSheetTitleFromFirstRow(name) {
+  try {
+    const ws = workbook && workbook.Sheets ? workbook.Sheets[name] : null;
+    if (!ws) return '';
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const firstRow = rows[0] || [];
+    for (let c = 0; c < firstRow.length; c++) {
+      const val = String(firstRow[c] ?? '').trim();
+      if (val) return val;
+    }
+    return '';
+  } catch (e) {
+    return '';
+  }
+}
+
 function formatGroupPrintTitle(name) {
   const clean = String(name || '').trim();
+  const firstRowTitle = getSheetTitleFromFirstRow(name);
+  if (firstRowTitle) return firstRowTitle;
+
   const cfg = getAppSettings();
   const yearText = String(cfg.studyYearText || '2025-2026').trim();
   const termText = String(cfg.termText || 'нимсолаи аввали').trim();
