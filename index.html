@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Танзимкори Баҳо</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+
+function applyTheme(theme) {
+  const body = document.body;
+  const icon = document.getElementById('themeIcon');
+  const label = document.getElementById('themeLabel');
+  const isLight = theme === 'light';
+  body.classList.toggle('light', isLight);
+  body.classList.toggle('dark', !isLight);
+  if (icon) icon.textContent = isLight ? '🌙' : '☀️';
+  if (label) label.textContent = isLight ? 'Темный' : 'Светлый';
+  try { localStorage.setItem('baho_theme', theme); } catch (e) {}
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.contains('light');
+  applyTheme(isLight ? 'dark' : 'light');
+}
+
+(function initTheme() {
+  let saved = 'dark';
+  try { saved = localStorage.getItem('baho_theme') || 'dark'; } catch (e) {}
+  if (saved !== 'light' && saved !== 'dark') saved = 'dark';
+  document.addEventListener('DOMContentLoaded', () => applyTheme(saved));
+})();
+
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;600;700&family=Orbitron:wght@700;900&display=swap');
+  :root {
+    --bg: #0a0e1a; --panel: #111827; --border: #1e2d45;
+    --accent: #00c8ff; --green: #00e676; --orange: #ff9100; --red: #ff3d57;
+    --text: #e2e8f0; --muted: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans', sans-serif; min-height: 100vh; padding: 24px 16px;
+    background-image: radial-gradient(ellipse at 20% 20%, #0d2137 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 80%, #0d1f2d 0%, transparent 50%);
+  }
+  h1 { font-family: 'Orbitron', monospace; font-size: 1.4rem; color: var(--accent); letter-spacing: 2px; text-align: center; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title::before { content: ''; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+  .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(0,200,255,0.05); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .upload-zone p { color: var(--muted); font-size: 0.9rem; }
+  .filename { color: var(--green); font-weight: 600; margin-top: 8px; }
+  .sheet-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .sheet-chip { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; border: 1px solid var(--border); background: #1a2535; color: var(--muted); transition: all 0.2s; user-select: none; }
+  .sheet-chip:hover { border-color: var(--accent); color: var(--text); }
+  .sheet-chip.selected { background: rgba(0,200,255,0.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .select-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+  .btn-small { padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; border: 1px solid var(--border); background: #1a2535; color: var(--muted); font-family: inherit; transition: all 0.2s; }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .mode-btn.active { background: rgba(0,200,255,0.15); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  body.light .mode-btn.active { background: rgba(0,119,204,0.1); }
+  .sheet-info { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .stat-box { background: #0d1621; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid var(--border); }
+  .stat-box .val { font-family: 'Orbitron', monospace; font-size: 1.3rem; font-weight: 900; }
+  .stat-box .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .stat-box.green .val { color: var(--green); }
+  .stat-box.orange .val { color: var(--orange); }
+  .stat-box.red .val { color: var(--red); }
+  .bar-wrap { margin-top: 14px; }
+  .bar-track { height: 8px; background: #1a2535; border-radius: 4px; overflow: hidden; display: flex; }
+  .bar-seg { height: 100%; transition: width 0.6s ease; }
+  .bar-seg.green { background: var(--green); }
+  .bar-seg.orange { background: var(--orange); }
+  .bar-seg.red { background: var(--red); }
+  .targets-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .target-item label { font-size: 0.72rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .input-wrap { position: relative; }
+  .input-wrap input { width: 100%; background: #1a2535; border: 2px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 36px 10px 14px; font-size: 1.1rem; font-family: 'Orbitron', monospace; font-weight: 700; outline: none; transition: border-color 0.2s; }
+  .input-wrap.sifat input:focus { border-color: var(--green); }
+  .input-wrap.azkh input:focus { border-color: var(--orange); }
+  .input-wrap.pesh input:focus { border-color: var(--red); }
+  .input-wrap .pct { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1rem; pointer-events: none; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .dot.green { background: var(--green); }
+  .dot.orange { background: var(--orange); }
+  .dot.red { background: var(--red); }
+  .sum-warn { font-size: 0.78rem; color: var(--red); margin-top: 6px; text-align: center; }
+  .hidden { display: none; }
+  .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .btn-primary { background: linear-gradient(135deg, #00c8ff, #0077aa); color: #000; margin-top: 16px; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,200,255,0.3); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-success { background: linear-gradient(135deg, #00e676, #00a050); color: #000; margin-top: 10px; }
+  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,230,118,0.3); }
+
+  /* Variation slider */
+  .variation-wrap { margin-top: 16px; padding: 14px; background: #0d1621; border-radius: 10px; border: 1px solid var(--border); }
+  .variation-wrap label { font-size: 0.72rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .variation-wrap label span { color: var(--accent); font-family: 'Orbitron', monospace; }
+  input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .variation-hint { font-size: 0.75rem; color: var(--muted); margin-top: 6px; text-align: center; }
+  .zero-wrap { margin-top: 14px; padding: 14px; background: #0d1621; border-radius: 10px; border: 1px solid var(--border); }
+  .zero-wrap label { font-size: 0.72rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
+  .zero-wrap .mini { font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+
+  .group-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.82rem; }
+  .group-table th { background: #0d1621; color: var(--accent); padding: 8px 10px; text-align: left; font-weight: 600; letter-spacing: 1px; font-size: 0.7rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .group-table td { padding: 7px 10px; border-bottom: 1px solid #1a2535; }
+  .group-table tr:last-child td { border-bottom: none; }
+  .group-table .total-row td { color: var(--accent); font-weight: 700; border-top: 2px solid var(--border); font-family: 'Orbitron', monospace; font-size: 0.85rem; }
+  .tag-green { color: var(--green); font-weight: 700; }
+  .tag-orange { color: var(--orange); font-weight: 700; }
+  .tag-red { color: var(--red); font-weight: 700; }
+  .log { background: #0d1621; border-radius: 8px; padding: 14px; font-size: 0.78rem; color: var(--muted); max-height: 140px; overflow-y: auto; line-height: 1.9; font-family: monospace; margin-top: 12px; }
+  .log .ok { color: var(--green); }
+  .log .info { color: var(--accent); }
+  .log .warn { color: var(--orange); }
+  .dual-summary { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .summary-card { background:#0d1621; border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .summary-card h3 { font-size:0.8rem; letter-spacing:2px; color:var(--accent); margin-bottom:10px; text-transform:uppercase; }
+  .summary-card p { font-size:0.82rem; color:var(--muted); margin-top:6px; }
+
+  .tabs { display:flex; gap:10px; margin: 0 auto 18px; max-width: 1100px; justify-content:center; flex-wrap:wrap; }
+  .tab-btn { padding:10px 16px; border-radius:10px; border:1px solid var(--border); background:#111827; color:var(--muted); cursor:pointer; font-weight:700; letter-spacing:1px; }
+  .tab-btn.active { color:var(--accent); border-color:var(--accent); background:rgba(0,200,255,0.08); }
+  .tab-page.hidden-page { display:none; }
+  .subject-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin-top:12px; }
+  .subject-chip { padding:10px 12px; border-radius:10px; background:#1a2535; border:1px solid var(--border); color:var(--muted); cursor:pointer; user-select:none; font-size:0.85rem; }
+  .subject-chip.selected { color:var(--accent); border-color:var(--accent); background:rgba(0,200,255,0.12); font-weight:700; }
+  .mini-note { color:var(--muted); font-size:0.78rem; line-height:1.5; margin-top:8px; }
+  .settings-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .settings-stack { display:grid; gap:10px; }
+  .settings-stack input, .settings-grid input, .settings-stack textarea {
+    width:100%; background:#1a2535; border:2px solid var(--border); border-radius:8px;
+    color:var(--text); padding:10px 12px; font-size:1rem; font-family:inherit; outline:none;
+  }
+  .settings-stack input:focus, .settings-grid input:focus, .settings-stack textarea:focus { border-color: var(--accent); }
+  .settings-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  .btn-half { flex:1 1 260px; }
+  .print-preview-shell { background:#fff; color:#000; padding:20px; }
+  .print-page { width:860px; margin:0 auto 24px; background:#fff; color:#000; padding:22px 22px 34px; page-break-after:always; }
+  .print-title { text-align:center; font-size:20px; font-weight:700; margin-bottom:10px; }
+  .print-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12.5px; }
+  .print-table th, .print-table td { border:1px solid #222; padding:4px 5px; text-align:center; vertical-align:middle; }
+  .print-table .table-title-row th { font-size:13px; font-weight:700; padding:7px 8px; }
+  .print-table .totals-row td { background:#f5f5f5; font-weight:700; }
+  .print-table .percent-row td { border:none; padding-top:10px; }
+  .print-table td.name-cell { text-align:left; }
+  .print-table th.col-no { width:34px; }
+  .print-table th.col-name { width:210px; }
+  .print-table th.col-sum, .print-table td.col-sum { width:46px; }
+  .print-table th.vertical-header {
+    writing-mode: vertical-rl; transform: rotate(180deg); white-space:normal;
+    word-break:break-word; line-height:1.08; min-width:44px; width:44px; padding:8px 3px;
+  }
+  .bottom-stats { display:flex; justify-content:center; gap:42px; font-size:14px; font-weight:500; margin-top:6px; }
+  .print-footer { margin-top:26px; display:grid; gap:28px; font-size:16px; }
+  .signature-row { display:grid; grid-template-columns: 1fr 120px 1fr; align-items:end; gap:10px; }
+  .signature-row.two-col { grid-template-columns: auto 1fr auto; margin-top:6px; }
+  .signature-line { border-bottom:1px solid #222; min-height:24px; }
+  .signature-label { white-space:nowrap; }
+  @media print {
+    @page { size:A4 portrait; margin:10mm; }
+    body { background:#fff !important; }
+    .print-preview-shell { padding:0; }
+    .print-page { width:auto; margin:0; padding:0; box-shadow:none; }
+  }
+  body.light .settings-stack input, body.light .settings-grid input, body.light .settings-stack textarea { background:#f7fbff; }
+
+
+  .topbar { max-width: 1100px; margin: 0 auto 8px; display:flex; justify-content:flex-end; }
+  .theme-toggle {
+    border:1px solid var(--border); background: var(--panel); color: var(--text);
+    border-radius: 999px; padding: 10px 14px; cursor:pointer; font-size: 1rem;
+    display:inline-flex; align-items:center; gap:8px; box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .theme-toggle .theme-label { font-size: 0.8rem; font-weight: 700; }
+
+  body.light {
+    --bg: #f3f7fb; --panel: #ffffff; --border: #d8e2ee;
+    --accent: #0077cc; --green: #0f9d58; --orange: #ef6c00; --red: #d93025;
+    --text: #17212b; --muted: #5f6f82;
+    background-image: radial-gradient(ellipse at 20% 20%, rgba(0,119,204,0.08) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 80%, rgba(15,157,88,0.06) 0%, transparent 50%);
+  }
+  body.light .upload-zone:hover, body.light .upload-zone.drag { background: rgba(0,119,204,0.06); }
+  body.light .sheet-chip, body.light .btn-small, body.light .subject-chip, body.light .tab-btn,
+  body.light .input-wrap input, body.light .bar-track { background: #f7fbff; }
+  body.light .sheet-chip.selected, body.light .subject-chip.selected, body.light .tab-btn.active {
+    background: rgba(0,119,204,0.1);
+  }
+  body.light .stat-box, body.light .variation-wrap, body.light .zero-wrap, body.light .log, body.light .group-table th {
+    background: #f7fbff;
+  }
+  body.light .group-table td { border-bottom: 1px solid #e5edf5; }
+  body.light .upload-zone p, body.light .sheet-info, body.light .mini-note, body.light .variation-hint,
+  body.light .zero-wrap .mini, body.light .subtitle, body.light .log, body.light .sum-warn,
+  body.light .stat-box .lbl, body.light .target-item label, body.light .variation-wrap label, body.light .zero-wrap label {
+    color: var(--muted);
+  }
+  body.light .btn-primary { color: #fff; background: linear-gradient(135deg, #0b84e6, #0067b8); }
+  body.light .btn-success { color: #fff; background: linear-gradient(135deg, #16a34a, #0f8c3e); }
+  body.light .summary-card { background:#f7fbff; }
+
+
+  .loading-overlay{position:fixed;inset:0;background:rgba(10,14,26,0.72);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+  .loading-overlay.show{display:flex}
+  .loading-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px 26px;min-width:280px;text-align:center;box-shadow:0 14px 38px rgba(0,0,0,0.28)}
+  .loading-spinner{width:54px;height:54px;border:5px solid rgba(255,255,255,0.16);border-top-color:var(--accent);border-radius:50%;margin:0 auto 14px;animation:spin1 1s linear infinite}
+  .loading-title{font-family:'Orbitron', monospace;font-size:0.95rem;letter-spacing:1px;color:var(--accent);margin-bottom:6px}
+  .loading-text{color:var(--muted);font-size:0.85rem;line-height:1.5}
+  @keyframes spin1{to{transform:rotate(360deg)}}
+
+
+  body.font-times, body.font-times input, body.font-times button, body.font-times select, body.font-times textarea { font-family: "Times New Roman", serif; }
+  body.font-arial, body.font-arial input, body.font-arial button, body.font-arial select, body.font-arial textarea { font-family: Arial, sans-serif; }
+  body.font-calibri, body.font-calibri input, body.font-calibri button, body.font-calibri select, body.font-calibri textarea { font-family: Calibri, Arial, sans-serif; }
+
+</style>
+</head>
+<body>
+<div id="loadingOverlay" class="loading-overlay"><div class="loading-box"><div class="loading-spinner"></div><div class="loading-title">ОБРАБОТКА РАФТА ИСТОДААСТ</div><div class="loading-text">Лутфан каме интизор шавед...</div></div></div>
+
+<div class="topbar"><button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()"><span id="themeIcon">☀️</span><span class="theme-label" id="themeLabel">Светлый</span></button></div>
+<h1>⚡ ТАНЗИМКОРИ БАҲО</h1>
+<p class="subtitle">Сифат табиӣ тақсим мешавад, 0-ҳо бошад дастӣ идора мешаванд</p>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tabMainBtn" onclick="showTab('main')">Асосӣ</button>
+  <button class="tab-btn" id="tabSubjectsBtn" onclick="showTab('subjects')">Фанҳо</button>
+  <button class="tab-btn" id="tabSettingsBtn" onclick="showTab('settings')">Танзимот</button>
+</div>
+
+<div class="tab-page" id="mainPage">
+
+<div class="card">
+  <div class="card-title">1 · Файли Excel</div>
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <div class="upload-icon">📂</div>
+    <p>Файлро ин ҷо партоед ё клик кунед</p>
+    <div class="filename" id="fileName"></div>
+  </div>
+</div>
+
+<div class="card hidden" id="sheetCard">
+  <div class="card-title">2 · Гурӯҳҳоро интихоб кунед</div>
+  <div class="select-actions">
+    <button class="btn-small" onclick="selectAll()">Ҳамаро</button>
+    <button class="btn-small" onclick="selectNone()">Тоза кун</button>
+  </div>
+  <div class="sheet-list" id="sheetList"></div>
+  <div class="sheet-info" id="sheetInfo"></div>
+  <div class="stats-row" id="currentStats" style="display:none">
+    <div class="stat-box green"><div class="val" id="curS">-</div><div class="lbl"><span class="dot green"></span>Сифат ҳозир</div></div>
+    <div class="stat-box orange"><div class="val" id="curA">-</div><div class="lbl"><span class="dot orange"></span>Азхудкунӣ</div></div>
+    <div class="stat-box red"><div class="val" id="curP">-</div><div class="lbl"><span class="dot red"></span>Пешрафт</div></div>
+  </div>
+  <div class="bar-wrap" id="barWrap" style="display:none">
+    <div class="bar-track">
+      <div class="bar-seg green" id="barS" style="width:0%"></div>
+      <div class="bar-seg orange" id="barA" style="width:0%"></div>
+      <div class="bar-seg red" id="barP" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card hidden" id="targetCard">
+  <div class="card-title">3 · Фоизи мақсади умумӣ (миёна)</div>
+  <div class="targets-grid">
+    <div class="target-item">
+      <label><span class="dot green"></span>Сифат (75-100)</label>
+      <div class="input-wrap sifat"><input type="text" inputmode="decimal" id="tS" value="63" oninput="checkSum()"><span class="pct">%</span></div>
+    </div>
+    <div class="target-item">
+      <label><span class="dot orange"></span>Азхудкунӣ (50-74)</label>
+      <div class="input-wrap azkh"><input type="text" inputmode="decimal" id="tA" value="26" oninput="checkSum()"><span class="pct">%</span></div>
+    </div>
+    <div class="target-item">
+      <label><span class="dot red"></span>Пешрафт (0-49)</label>
+      <div class="input-wrap pesh"><input type="text" inputmode="decimal" id="tP" value="11" oninput="checkSum()"><span class="pct">%</span></div>
+    </div>
+  </div>
+  <div class="sum-warn hidden" id="sumWarn">⚠️ Ҷамъ 100% бошад! Ҳозир: <span id="sumVal"></span>%</div>
+
+  <!-- Фарқияти гурӯҳҳо -->
+  <div class="variation-wrap">
+    <label>Фарқияти байни гурӯҳҳо <span id="varVal">±8%</span></label>
+    <input type="range" id="varRange" min="2" max="20" value="8" step="1" oninput="document.getElementById('varVal').textContent='±'+this.value+'%'">
+    <div class="variation-hint">Кам = ҳама гурӯҳ яхел · Зиёд = гурӯҳҳо хеле фарқ мекунанд</div>
+  </div>
+
+  <div class="zero-wrap">
+    <label>Ҷамъи 0-ҳо дар ҳамаи гурӯҳҳои интихобшуда</label>
+    <div class="input-wrap pesh"><input type="number" id="totalZeros" min="0" value="18" step="1"><span class="pct">0</span></div>
+    <div class="mini">Мисол: агар дар 12 гурӯҳ ҷамъ 18 дона баҳои 0 бошад, ҳамин ҷо 18 менависед.</div>
+  </div>
+
+  <div class="variation-wrap">
+    <label>Реҷаи ҳисоб <span id="calcModeLabel">Бо гурӯҳ</span></label>
+    <div class="select-actions">
+      <button class="btn-small mode-btn active" type="button" id="modeGroupBtn" onclick="setCalcMode('group')">Бо гурӯҳ</button>
+      <button class="btn-small mode-btn" type="button" id="modeGradeBtn" onclick="setCalcMode('grade')">Бо баҳо</button>
+    </div>
+    <div class="variation-hint">Бо гурӯҳ = миёнаи 12 гурӯҳ. Бо баҳо = аз рӯи ҳамаи баҳои ҳамаи гурӯҳҳо.</div>
+  </div>
+
+  <button class="btn btn-primary" id="calcBtn" onclick="calculate()" disabled>⚡ ИВАЗ КУН</button>
+</div>
+
+<div class="card hidden" id="printSelectCard">
+  <div class="card-title">4 · Сутунҳо барои чоп (Асосӣ)</div>
+  <div class="select-actions">
+    <button class="btn-small" type="button" onclick="selectAllMainPrintCols()">Ҳама</button>
+    <button class="btn-small" type="button" onclick="clearMainPrintCols()">Тоза</button>
+  </div>
+  <div class="subject-grid" id="mainPrintColumns"></div>
+  <div class="mini-note">Дар чоп танҳо фанҳои интихобшуда мебароянд. Агар 3 фанро интихоб кунӣ, дар PDF ҳамон 3 фан мебарояд.</div>
+  <div class="card-title" style="margin-top:16px">5 · Ҷамъбаст барои чоп</div>
+  <div class="select-actions">
+    <button class="btn-small" type="button" onclick="selectAllMainSummaryCols()">Ҳама</button>
+    <button class="btn-small" type="button" onclick="clearMainSummaryCols()">Тоза</button>
+  </div>
+  <div class="subject-grid" id="mainSummaryColumns"></div>
+  <div class="mini-note">Агар птичка монӣ, он сутуни ҷамъбаст дар чоп мебарояд. Агар нагузорӣ, намебарояд.</div>
+</div>
+
+<div class="card hidden" id="resultCard">
+  <div class="card-title">4 · Натиҷа — ҳар гурӯҳ фарқ дорад</div>
+  <table class="group-table">
+    <thead>
+      <tr>
+        <th>Гурӯҳ</th>
+        <th>Нафар</th>
+        <th><span class="dot green"></span>Сифат</th>
+        <th><span class="dot orange"></span>Азхудкунӣ</th>
+        <th><span class="dot red"></span>Пешрафт</th>
+      </tr>
+    </thead>
+    <tbody id="groupTableBody"></tbody>
+  </table>
+  <div class="log" id="logBox"></div>
+  <div class="dual-summary">
+    <div class="summary-card">
+      <h3>Умумӣ аз рӯи ҳамаи баҳоҳо</h3>
+      <div class="stats-row" style="margin-top:0">
+        <div class="stat-box green"><div class="val" id="weightedS">-</div><div class="lbl"><span class="dot green"></span>Сифат</div></div>
+        <div class="stat-box orange"><div class="val" id="weightedA">-</div><div class="lbl"><span class="dot orange"></span>Азхудкунӣ</div></div>
+        <div class="stat-box red"><div class="val" id="weightedP">-</div><div class="lbl"><span class="dot red"></span>Пешрафт</div></div>
+      </div>
+      <p>Ин ҳисоб аз рӯи ҳамаи баҳоҳои ҳамаи гурӯҳҳо гирифта мешавад.</p>
+    </div>
+    <div class="summary-card">
+      <h3>Миёнаи гурӯҳҳо</h3>
+      <div class="stats-row" style="margin-top:0">
+        <div class="stat-box green"><div class="val" id="avgS">-</div><div class="lbl"><span class="dot green"></span>Сифат</div></div>
+        <div class="stat-box orange"><div class="val" id="avgA">-</div><div class="lbl"><span class="dot orange"></span>Азхудкунӣ</div></div>
+        <div class="stat-box red"><div class="val" id="avgP">-</div><div class="lbl"><span class="dot red"></span>Пешрафт</div></div>
+      </div>
+      <p>Ин ҳисоб миёнаи фоизҳои ҳамаи гурӯҳҳост. Барои ручной ҳисоб бо миёнагирӣ ҳаминро истифода баред.</p>
+    </div>
+  </div>
+
+  <div class="settings-actions">
+    <button class="btn btn-primary btn-half" onclick="previewOriginalPdf()">👁 ПЕШНАМОИШИ PDF (ОРИГИНАЛ)</button>
+    <button class="btn btn-primary btn-half" onclick="previewModifiedPdf()">🖨 ПЕШНАМОИШИ PDF (БАЪД АЗ ИВАЗ)</button>
+    <button class="btn btn-success btn-half" onclick="downloadFile()">⬇ ЗЕРКАШӢ EXCEL</button>
+  </div>
+
+</div>
+
+<div class="card hidden" id="studentDetailCard" style="margin-top:16px">
+  <div class="card-title">5 · Донишҷӯён — як гурӯҳ</div>
+  <div class="sheet-info" id="studentDetailInfo">Барои дидани ҷузъиёти донишҷӯён танҳо як гурӯҳро интихоб кунед.</div>
+  <table class="group-table" id="studentDetailTable" style="display:none; margin-top:10px">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Донишҷӯ</th>
+        <th><span class="dot green"></span>Сифат</th>
+        <th><span class="dot orange"></span>Азхудкунӣ</th>
+        <th><span class="dot red"></span>Пешрафт</th>
+        <th>Нол</th>
+        <th>Ҳамагӣ</th>
+      </tr>
+    </thead>
+    <tbody id="studentDetailBody"></tbody>
+  </table>
+</div>
+</div>
+
+<div class="tab-page hidden-page" id="subjectsPage">
+  <div class="card">
+    <div class="card-title">1 · Файли Excel барои фанҳо</div>
+    <div class="upload-zone" id="subjectUploadZone">
+      <input type="file" id="subjectFileInput" accept=".xlsx,.xls">
+      <div class="upload-icon">📚</div>
+      <p>Файли зеркашикардаи тайёрро ин ҷо ворид кунед</p>
+      <div class="filename" id="subjectFileName"></div>
+    </div>
+    <div class="mini-note">Беҳтараш файлеро ворид кунед, ки аз саҳифаи асосӣ зеркашӣ кардаед. Дар ин саҳифа баҳо дигар иваз намешаванд — танҳо фанҳои лозимӣ ҷудо карда мешаванд.</div>
+  </div>
+
+  <div class="card hidden" id="subjectGroupCard">
+    <div class="card-title">2 · Як ё чанд гурӯҳро интихоб кунед</div>
+    <div class="sheet-list" id="subjectGroupList"></div>
+    <div class="select-actions">
+      <button class="btn-small" onclick="selectAllSubjectGroups()">Ҳамаи гурӯҳҳо</button>
+      <button class="btn-small" onclick="selectNoSubjectGroups()">Тоза кун</button>
+    </div>
+    <div class="sheet-info" id="subjectGroupInfo"></div>
+  </div>
+
+  <div class="card hidden" id="subjectPickCard">
+    <div class="card-title">3 · Фанҳои лозимаро интихоб кунед</div>
+    <div class="select-actions">
+      <button class="btn-small" onclick="selectAllSubjects()">Ҳамаи фанҳо</button>
+      <button class="btn-small" onclick="selectNoSubjects()">Тоза кун</button>
+    </div>
+    <div class="subject-grid" id="subjectList"></div>
+    <div class="sheet-info" id="subjectInfo"></div>
+    <div class="stats-row" id="subjectStats" style="display:none">
+      <div class="stat-box green"><div class="val" id="subS">-</div><div class="lbl"><span class="dot green"></span>Сифат</div></div>
+      <div class="stat-box orange"><div class="val" id="subA">-</div><div class="lbl"><span class="dot orange"></span>Азхудкунӣ</div></div>
+      <div class="stat-box red"><div class="val" id="subP">-</div><div class="lbl"><span class="dot red"></span>Пешрафт</div></div>
+    </div>
+    <div class="bar-wrap" id="subjectBarWrap" style="display:none">
+      <div class="bar-track">
+        <div class="bar-seg green" id="subBarS" style="width:0%"></div>
+        <div class="bar-seg orange" id="subBarA" style="width:0%"></div>
+        <div class="bar-seg red" id="subBarP" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="card-title" style="margin-top:16px">4 · Натиҷа аз рӯи ҳар як фан</div>
+    <table class="group-table" id="subjectResultTable" style="display:none; margin-top:10px">
+      <thead>
+        <tr>
+          <th>Фан</th>
+          <th>Шумораи баҳо</th>
+          <th><span class="dot green"></span>Сифат</th>
+          <th><span class="dot orange"></span>Азхудкунӣ</th>
+          <th><span class="dot red"></span>Пешрафт</th>
+        </tr>
+      </thead>
+      <tbody id="subjectResultBody"></tbody>
+    </table>
+    <div class="mini-note" id="subjectResultNote" style="display:none">Дар ин ҷадвал ҳар як фан алоҳида нишон дода мешавад. Баҳо иваз намешаванд — ҳисоб аз худи файли Excel гирифта мешавад.</div>
+    <div class="settings-actions">
+      <button class="btn btn-primary btn-half" id="previewSubjectsPdfBtn" onclick="previewSubjectsPdf()" disabled>👁 ПЕШНАМОИШИ PDF (ФАНҲО)</button>
+      <button class="btn btn-success btn-half" id="downloadSubjectsPdfBtn" onclick="downloadSubjectsPdf()" disabled>⬇ СКАЧАТЬ PDF (ФАНҲО)</button>
+      <button class="btn btn-success btn-half" id="downloadSubjectsBtn" onclick="downloadSubjectFile()" disabled>⬇ ФАНҲОРО АЛОҲИДА ЭКСЕЛ КУН</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-page hidden-page" id="settingsPage">
+  <div class="card">
+    <div class="card-title">1 · Танзимоти ҳисоб</div>
+    <div class="settings-grid">
+      <div class="target-item">
+        <label>Сифат аз чанд сар шавад</label>
+        <div class="input-wrap sifat"><input type="number" id="cfgSifatMin" value="75" min="0" max="100"></div>
+      </div>
+      <div class="target-item">
+        <label>Азхудкунӣ аз чанд сар шавад</label>
+        <div class="input-wrap azkh"><input type="number" id="cfgAzkhMin" value="50" min="0" max="100"></div>
+      </div>
+      <div class="target-item">
+        <label>Пешрафт то чанд бошад</label>
+        <div class="input-wrap pesh"><input type="number" id="cfgPeshMax" value="49" min="0" max="100"></div>
+      </div>
+    </div>
+    <div class="mini-note">Агар ту ин рақамҳоро иваз кунӣ, ҳисоб дар барнома аз ҳамин меъёрҳо мегузарад. Агар сабт накунӣ, по умолчанию 75 / 50 / 49 мемонад.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2 · Матни доимӣ барои чоп</div>
+    <div class="settings-stack">
+      <input type="text" id="cfgPrintLine1" placeholder="Сатри 1 — ному насаб">
+      <input type="text" id="cfgPrintLine2" placeholder="Сатри 2 — вазифа">
+      <input type="text" id="cfgPrintLine3" placeholder="Сатри 3 — маълумоти иловагӣ">
+      <input type="text" id="cfgTermText" placeholder="Матни нимсола — мисол: нимсолаи аввали">
+      <input type="text" id="cfgStudyYearText" placeholder="Соли таҳсил — мисол: 2025-2026">
+      <select id="cfgDocStyle">
+        <option value="times">Times New Roman</option>
+        <option value="arial">Arial</option>
+        <option value="calibri">Calibri</option>
+      </select>
+      <div class="settings-grid">
+        <div class="target-item">
+          <label>Шрифти ҷадвал (чоп/PDF)</label>
+          <div class="input-wrap"><input type="number" id="cfgTableFontSize" value="11" min="8" max="20" step="0.5"></div>
+        </div>
+        <div class="target-item">
+          <label>Шрифти номи фанҳои вертикалӣ</label>
+          <div class="input-wrap"><input type="number" id="cfgVerticalHeaderFontSize" value="9" min="7" max="18" step="0.5"></div>
+        </div>
+        <div class="target-item">
+          <label>Шрифти фоизҳо ва поён</label>
+          <div class="input-wrap"><input type="number" id="cfgFooterFontSize" value="14" min="8" max="22" step="0.5"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mini-note">Ин сатрҳо дар поёни ҳар саҳифаи PDF мебароянд. Матни нимсола ва соли таҳсил барои сарлавҳаи ҳар гурӯҳ истифода мешавад. Шрифт ва размерҳо танҳо ба чоп/PDF таъсир мекунанд.</div>
+    <div class="settings-actions">
+      <button class="btn btn-success btn-half" onclick="saveAppSettings()">💾 САБТИ ТАНЗИМОТ</button>
+      <button class="btn btn-small btn-half" type="button" onclick="resetAppSettings()">БА ҲОЛАТИ АСЛӢ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let workbook = null;
+let originalWorkbook = null;
+let modifiedSheets = {};
+let lastGroupStats = {};
+let lastOverallStats = { s: 0, a: 0, p: 0 };
+let lastAverageStats = { s: 0, a: 0, p: 0 };
+let lastStudentDetails = {};
+let subjectWorkbook = null;
+let currentSubjectGroups = [];
+let currentSubjectGroup = null;
+let calcMode = 'group';
+let mainPrintTemplateHeaders = [];
+let mainSummaryTemplateHeaders = ['Сиф.', 'Азх.', 'Пеш.', 'Нол', 'Ҳам.'];
+
+const GRADE_COLS = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]; // C:Q
+const GRADE_COL_LETTERS = ['C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q'];
+
+document.addEventListener('DOMContentLoaded', () => { setCalcMode('group'); applySettingsToInputs(); applyDocumentStyle(getAppSettings().docStyle); });
+
+
+function getAppSettings() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('baho_app_settings') || '{}'); } catch (e) { saved = {}; }
+  return {
+    sifatMin: Number(saved.sifatMin ?? 75),
+    azkhMin: Number(saved.azkhMin ?? 50),
+    peshMax: Number(saved.peshMax ?? 49),
+    printLine1: String(saved.printLine1 || ''),
+    printLine2: String(saved.printLine2 || ''),
+    printLine3: String(saved.printLine3 || ''),
+    studyYearText: String(saved.studyYearText || '2025-2026'),
+    termText: String(saved.termText || 'нимсолаи аввали'),
+    docStyle: String(saved.docStyle || 'times'),
+    tableFontSize: Number(saved.tableFontSize ?? 11),
+    verticalHeaderFontSize: Number(saved.verticalHeaderFontSize ?? 9),
+    footerFontSize: Number(saved.footerFontSize ?? 14)
+  };
+}
+
+function applySettingsToInputs() {
+  const s = getAppSettings();
+  const map = {
+    cfgSifatMin: s.sifatMin,
+    cfgAzkhMin: s.azkhMin,
+    cfgPeshMax: s.peshMax,
+    cfgPrintLine1: s.printLine1,
+    cfgPrintLine2: s.printLine2,
+    cfgPrintLine3: s.printLine3,
+    cfgStudyYearText: s.studyYearText,
+    cfgTermText: s.termText,
+    cfgDocStyle: s.docStyle,
+    cfgTableFontSize: s.tableFontSize,
+    cfgVerticalHeaderFontSize: s.verticalHeaderFontSize,
+    cfgFooterFontSize: s.footerFontSize
+  };
+  Object.entries(map).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+}
+
+function applyDocumentStyle(styleName) {
+  const style = styleName || getAppSettings().docStyle || 'times';
+  document.body.classList.remove('font-times','font-arial','font-calibri');
+  document.body.classList.add('font-' + style);
+}
+
+function saveAppSettings() {
+  const sifatMin = Math.max(0, Math.min(100, Number(document.getElementById('cfgSifatMin').value || 75)));
+  const azkhMin = Math.max(0, Math.min(100, Number(document.getElementById('cfgAzkhMin').value || 50)));
+  const peshMax = Math.max(0, Math.min(100, Number(document.getElementById('cfgPeshMax').value || 49)));
+  if (!(sifatMin > azkhMin)) {
+    alert('Сифат бояд аз азхудкунӣ баландтар бошад.');
+    return;
+  }
+  const payload = {
+    sifatMin,
+    azkhMin,
+    peshMax,
+    printLine1: document.getElementById('cfgPrintLine1').value || '',
+    printLine2: document.getElementById('cfgPrintLine2').value || '',
+    printLine3: document.getElementById('cfgPrintLine3').value || '',
+    studyYearText: document.getElementById('cfgStudyYearText').value || '2025-2026',
+    termText: document.getElementById('cfgTermText').value || 'нимсолаи аввали',
+    docStyle: document.getElementById('cfgDocStyle').value || 'times',
+    tableFontSize: Math.max(8, Math.min(20, Number(document.getElementById('cfgTableFontSize').value || 11))),
+    verticalHeaderFontSize: Math.max(7, Math.min(18, Number(document.getElementById('cfgVerticalHeaderFontSize').value || 9))),
+    footerFontSize: Math.max(8, Math.min(22, Number(document.getElementById('cfgFooterFontSize').value || 14)))
+  };
+  localStorage.setItem('baho_app_settings', JSON.stringify(payload));
+  applyDocumentStyle(payload.docStyle);
+  alert('Танзимот сабт шуд.');
+  updateStats();
+}
+
+function resetAppSettings() {
+  localStorage.removeItem('baho_app_settings');
+  applySettingsToInputs();
+  applyDocumentStyle(getAppSettings().docStyle);
+  updateStats();
+  alert('Танзимот ба ҳолати аслӣ баргашт.');
+}
+
+function isFilledCell(value) {
+  return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+function parseGradeCell(value) {
+  if (!isFilledCell(value)) return { num: 0, empty: true };
+  const num = parseFloat(String(value).replace(',', '.'));
+  if (!Number.isFinite(num)) return { num: 0, empty: true };
+  return { num, empty: false };
+}
+
+function colIndexToLetter(idx) {
+  let n = idx + 1;
+  let s = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function isSummaryHeaderValue(value) {
+  const v = String(value || '').trim().toLowerCase();
+  return ['сифат','азхудкунӣ','азхудкуни','пешрафт','нол','ҳамагӣ','хамагй','ҳамаги','хамаги'].includes(v);
+}
+
+function isPlaceholderHeaderValue(value) {
+  const v = String(value || '').trim();
+  return /^[A-ZА-ЯЁ]$/.test(v);
+}
+
+function detectActiveGradeCols(rows, dataStart, studentRowIndexes) {
+  const headerRow = rows[Math.max(0, dataStart - 1)] || [];
+  return GRADE_COLS.filter(c => {
+    const headerVal = headerRow[c];
+    if (isSummaryHeaderValue(headerVal) || isPlaceholderHeaderValue(headerVal)) return false;
+    const hasRealHeader = isFilledCell(headerVal);
+    const hasStudentValue = studentRowIndexes.some(r => {
+      const cell = (rows[r] || [])[c];
+      if (!isFilledCell(cell)) return false;
+      const parsed = parseFloat(String(cell).replace(',', '.'));
+      return Number.isFinite(parsed);
+    });
+    return hasRealHeader || hasStudentValue;
+  });
+}
+
+function formatGroupPrintTitle(name) {
+  const clean = String(name || '').trim();
+  const cfg = getAppSettings();
+  const yearText = String(cfg.studyYearText || '2025-2026').trim();
+  const termText = String(cfg.termText || 'нимсолаи аввали').trim();
+  let title = clean;
+  const m = clean.match(/^(\d+)\s*[кk][хҳh]\s*(\((\d+)\))?$/iu);
+  if (m) {
+    const num = m[1];
+    const par = m[2] ? ` ${m[2]}` : '';
+    title = `Гурӯҳи ${num} кори ҳамширагӣ${par} дар ${termText} соли таҳсили ${yearText}`;
+  }
+  return title;
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('fileName').textContent = '✓ ' + file.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    workbook = XLSX.read(ev.target.result, { type: 'array', cellFormula: true, cellStyles: true });
+    originalWorkbook = XLSX.read(ev.target.result, { type: 'array', cellFormula: true, cellStyles: true });
+    buildChips();
+  };
+  reader.readAsArrayBuffer(file);
+});
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag');
+  document.getElementById('fileInput').files = e.dataTransfer.files;
+  document.getElementById('fileInput').dispatchEvent(new Event('change'));
+});
+
+
+document.getElementById('subjectFileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('subjectFileName').textContent = '✓ ' + file.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    subjectWorkbook = XLSX.read(ev.target.result, { type: 'array', cellFormula: true, cellStyles: true });
+    buildSubjectGroups();
+    showTab('subjects');
+  };
+  reader.readAsArrayBuffer(file);
+});
+const subjectZone = document.getElementById('subjectUploadZone');
+subjectZone.addEventListener('dragover', e => { e.preventDefault(); subjectZone.classList.add('drag'); });
+subjectZone.addEventListener('dragleave', () => subjectZone.classList.remove('drag'));
+subjectZone.addEventListener('drop', e => {
+  e.preventDefault(); subjectZone.classList.remove('drag');
+  document.getElementById('subjectFileInput').files = e.dataTransfer.files;
+  document.getElementById('subjectFileInput').dispatchEvent(new Event('change'));
+});
+
+function getSheetStudents(name) {
+  return getSheetStudentsFromBook(workbook, name);
+}
+
+function calcStats(students) {
+  const cfg = getAppSettings();
+  let s=0, a=0, p=0;
+  students.forEach(st => st.grades.forEach(g => {
+    if (g.value >= cfg.sifatMin) s++;
+    else if (g.value >= cfg.azkhMin) a++;
+    else p++;
+  }));
+  return { s, a, p, total: s+a+p };
+}
+
+function buildChips() {
+  const list = document.getElementById('sheetList');
+  list.innerHTML = '';
+  workbook.SheetNames.forEach(name => {
+    const { students } = getSheetStudents(name);
+    if (!students.length) return;
+    const chip = document.createElement('div');
+    chip.className = 'sheet-chip';
+    chip.textContent = name;
+    chip.dataset.sheet = name;
+    chip.onclick = () => { chip.classList.toggle('selected'); updateStats(); };
+    list.appendChild(chip);
+  });
+  document.getElementById('sheetCard').classList.remove('hidden');
+  document.getElementById('targetCard').classList.remove('hidden');
+  buildMainPrintColumns();
+}
+
+function getSelected() {
+  return [...document.querySelectorAll('.sheet-chip.selected')].map(c => c.dataset.sheet);
+}
+function selectAll() { document.querySelectorAll('.sheet-chip').forEach(c => c.classList.add('selected')); updateStats(); }
+function selectNone() { document.querySelectorAll('.sheet-chip').forEach(c => c.classList.remove('selected')); updateStats(); }
+
+function parseLocaleNumber(value) {
+  if (value === null || value === undefined) return 0;
+  const clean = String(value).trim().replace(/\s+/g, '').replace(',', '.');
+  const num = parseFloat(clean);
+  return Number.isFinite(num) ? num : 0;
+}
+function formatPct(value, digits = 2) {
+  return Number(value).toFixed(digits).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
+function safePercent(count, total) {
+  return total ? (count / total * 100) : 0;
+}
+
+function setCalcMode(mode) {
+  calcMode = mode === 'grade' ? 'grade' : 'group';
+  document.getElementById('modeGroupBtn').classList.toggle('active', calcMode === 'group');
+  document.getElementById('modeGradeBtn').classList.toggle('active', calcMode === 'grade');
+  document.getElementById('calcModeLabel').textContent = calcMode === 'grade' ? 'Бо баҳо' : 'Бо гурӯҳ';
+}
+
+function hideStudentDetail() {
+  document.getElementById('studentDetailCard').classList.add('hidden');
+  document.getElementById('studentDetailTable').style.display = 'none';
+  document.getElementById('studentDetailBody').innerHTML = '';
+  document.getElementById('studentDetailInfo').textContent = 'Барои дидани ҷузъиёти донишҷӯён танҳо як гурӯҳро интихоб кунед.';
+}
+
+function buildStudentDetailsFromStudents(students) {
+  return (students || []).map(st => {
+    let s = 0, a = 0, p = 0, z = 0;
+    const cfg = getAppSettings();
+    (st.grades || []).forEach(g => {
+      const val = Number(g.value || 0);
+      if (val >= cfg.sifatMin) s++;
+      else if (val >= cfg.azkhMin) a++;
+      else {
+        p++;
+        if (val === 0) z++;
+      }
+    });
+    return { name: st.name, s, a, p, z, total: (st.grades || []).length };
+  });
+}
+
+function renderStudentDetailRows(groupName, rows, titlePrefix) {
+  const card = document.getElementById('studentDetailCard');
+  const table = document.getElementById('studentDetailTable');
+  const tbody = document.getElementById('studentDetailBody');
+  const info = document.getElementById('studentDetailInfo');
+  card.classList.remove('hidden');
+  tbody.innerHTML = '';
+  if (!rows || !rows.length) {
+    table.style.display = 'none';
+    info.textContent = 'Барои ин гурӯҳ маълумоти донишҷӯён ёфт нашуд.';
+    return;
+  }
+  info.textContent = `${titlePrefix} · ${groupName} · ${rows.length} донишҷӯ`;
+  rows.forEach((st, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${idx + 1}</td><td>${st.name}</td><td class="tag-green">${st.s}</td><td class="tag-orange">${st.a}</td><td class="tag-red">${st.p}</td><td>${st.z}</td><td>${st.total}</td>`;
+    tbody.appendChild(tr);
+  });
+  const totals = rows.reduce((acc, st) => {
+    acc.s += Number(st.s || 0);
+    acc.a += Number(st.a || 0);
+    acc.p += Number(st.p || 0);
+    acc.z += Number(st.z || 0);
+    acc.total += Number(st.total || 0);
+    return acc;
+  }, { s: 0, a: 0, p: 0, z: 0, total: 0 });
+  const tr = document.createElement('tr');
+  tr.className = 'total-row';
+  tr.innerHTML = `<td colspan="2">ҶАМЪИ ГУРӮҲ</td><td>${totals.s}</td><td>${totals.a}</td><td>${totals.p}</td><td>${totals.z}</td><td>${totals.total}</td>`;
+  tbody.appendChild(tr);
+  table.style.display = '';
+}
+
+function renderStudentDetail(groupName) {
+  const rows = lastStudentDetails[groupName] || [];
+  renderStudentDetailRows(groupName, rows, 'ПАС АЗ ИВАЗКУНӢ');
+}
+
+function renderStudentDetailPreview(groupName) {
+  const { students } = getSheetStudents(groupName);
+  const rows = buildStudentDetailsFromStudents(students);
+  renderStudentDetailRows(groupName, rows, 'ПЕШ АЗ ИВАЗКУНӢ');
+}
+
+function buildMainPrintColumns() {
+  const card = document.getElementById('printSelectCard');
+  const box = document.getElementById('mainPrintColumns');
+  const sumBox = document.getElementById('mainSummaryColumns');
+  if (!card || !box || !sumBox) return;
+  const sel = getSelected();
+  const baseName = sel[0] || (workbook && workbook.SheetNames ? workbook.SheetNames.find(n => getSheetStudents(n).students.length) : null);
+  if (!baseName) {
+    card.classList.add('hidden');
+    box.innerHTML = '';
+    sumBox.innerHTML = '';
+    mainPrintTemplateHeaders = [];
+    return;
+  }
+  const info = getPrintableRowsFromWorkbook(workbook, baseName);
+  mainPrintTemplateHeaders = info.headers || [];
+  box.innerHTML = '';
+  mainPrintTemplateHeaders.forEach((h, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'subject-chip selected';
+    chip.dataset.index = i;
+    chip.textContent = h;
+    chip.onclick = () => chip.classList.toggle('selected');
+    box.appendChild(chip);
+  });
+  sumBox.innerHTML = '';
+  mainSummaryTemplateHeaders.forEach((h, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'subject-chip selected';
+    chip.dataset.index = i;
+    chip.textContent = h;
+    chip.onclick = () => chip.classList.toggle('selected');
+    sumBox.appendChild(chip);
+  });
+  card.classList.remove('hidden');
+}
+
+function getSelectedMainPrintPositions() {
+  const picked = [...document.querySelectorAll('#mainPrintColumns .subject-chip.selected')].map(el => +el.dataset.index).filter(n => Number.isFinite(n));
+  if (picked.length) return picked;
+  return mainPrintTemplateHeaders.map((_, i) => i);
+}
+
+function selectAllMainPrintCols() {
+  document.querySelectorAll('#mainPrintColumns .subject-chip').forEach(el => el.classList.add('selected'));
+}
+
+function clearMainPrintCols() {
+  document.querySelectorAll('#mainPrintColumns .subject-chip').forEach(el => el.classList.remove('selected'));
+}
+
+function getSelectedMainSummaryPositions() {
+  return [...document.querySelectorAll('#mainSummaryColumns .subject-chip.selected')].map(el => +el.dataset.index).filter(n => Number.isFinite(n));
+}
+
+function selectAllMainSummaryCols() {
+  document.querySelectorAll('#mainSummaryColumns .subject-chip').forEach(el => el.classList.add('selected'));
+}
+
+function clearMainSummaryCols() {
+  document.querySelectorAll('#mainSummaryColumns .subject-chip').forEach(el => el.classList.remove('selected'));
+}
+
+
+function getMetaSheet(book) {
+  if (!book || !book.Sheets || !book.Sheets['_META']) return null;
+  const rows = XLSX.utils.sheet_to_json(book.Sheets['_META'], { header: 1, defval: '' });
+  const meta = {};
+  rows.forEach(r => {
+    const k = String(r[0] || '').trim();
+    if (k) meta[k] = r[1];
+  });
+  return meta;
+}
+
+function getSubjectContext() {
+  if (!subjectWorkbook) return null;
+  const groupNames = getSelectedSubjectGroups();
+  const indexes = getSelectedSubjectIndexes();
+  const allSheets = (subjectWorkbook.SheetNames || []).filter(n => n !== '_META');
+  const meta = getMetaSheet(subjectWorkbook);
+  const allGroupsSelected = groupNames.length && groupNames.length === allSheets.length && allSheets.every(n => groupNames.includes(n));
+  let allSubjectsSelected = false;
+  if (groupNames.length) {
+    allSubjectsSelected = groupNames.every(groupName => {
+      const { activeCols } = getSubjectWorkbookStudents(subjectWorkbook, groupName);
+      return indexes.length === activeCols.length;
+    });
+  }
+  return { meta, groupNames, indexes, allGroupsSelected, allSubjectsSelected, allSheets };
+}
+
+function updateStats() {
+  const sel = getSelected();
+  document.getElementById('resultCard').classList.add('hidden');
+  hideStudentDetail();
+  if (!sel.length) {
+    document.getElementById('sheetInfo').textContent = 'Ягон гурӯҳ интихоб нашудааст';
+    document.getElementById('printSelectCard').classList.add('hidden');
+    document.getElementById('currentStats').style.display = 'none';
+    document.getElementById('barWrap').style.display = 'none';
+    document.getElementById('calcBtn').disabled = true;
+    return;
+  }
+  buildMainPrintColumns();
+  let tS=0, tA=0, tP=0, tAll=0, tStudents=0;
+  sel.forEach(name => {
+    const { students } = getSheetStudents(name);
+    const st = calcStats(students);
+    tS+=st.s; tA+=st.a; tP+=st.p; tAll+=st.total;
+    tStudents += students.length;
+  });
+  const sp = tAll ? (tS/tAll*100).toFixed(1) : '0';
+  const ap = tAll ? (tA/tAll*100).toFixed(1) : '0';
+  const pp = tAll ? (tP/tAll*100).toFixed(1) : '0';
+  document.getElementById('sheetInfo').textContent = `✓ ${sel.length} гурӯҳ · 👥 ${tStudents} нафар · 📊 ${tAll} баҳо`;
+  document.getElementById('curS').textContent = sp+'%';
+  document.getElementById('curA').textContent = ap+'%';
+  document.getElementById('curP').textContent = pp+'%';
+  document.getElementById('barS').style.width = sp+'%';
+  document.getElementById('barA').style.width = ap+'%';
+  document.getElementById('barP').style.width = pp+'%';
+  document.getElementById('currentStats').style.display = '';
+  document.getElementById('barWrap').style.display = '';
+  document.getElementById('calcBtn').disabled = false;
+  if (sel.length === 1) renderStudentDetailPreview(sel[0]);
+}
+
+function checkSum() {
+  const sum = Math.round((parseLocaleNumber(document.getElementById('tS').value) + parseLocaleNumber(document.getElementById('tA').value) + parseLocaleNumber(document.getElementById('tP').value))*100)/100;
+  document.getElementById('sumVal').textContent = formatPct(sum, 2);
+  const bad = Math.abs(sum-100) > 0.01;
+  document.getElementById('sumWarn').classList.toggle('hidden', !bad);
+  document.getElementById('calcBtn').disabled = bad || !getSelected().length;
+}
+
+
+// Асоси алгоритм: тақсими мақсад бо фарқияти табиӣ + 0-ҳои дастӣ
+
+function showLoading(message) {
+  const overlay = document.getElementById('loadingOverlay');
+  if (!overlay) return;
+  const text = overlay.querySelector('.loading-text');
+  if (text && message) text.textContent = message;
+  overlay.classList.add('show');
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('show');
+}
+
+function getSheetStudentsFromBook(book, name) {
+  const ws = book && book.Sheets ? book.Sheets[name] : null;
+  if (!ws) return { students: [], dataStart: -1, activeCols: [] };
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  let students = [], dataStart = -1;
+  const studentRowIndexes = [];
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r] || [];
+    if (row[0] !== null && typeof row[0] === 'number' && row[0] >= 1 && row[0] <= 60 && row[1] && typeof row[1] === 'string') {
+      if (dataStart === -1) dataStart = r;
+      studentRowIndexes.push(r);
+    } else if (dataStart !== -1 && studentRowIndexes.length > 0) break;
+  }
+  const activeCols = dataStart === -1 ? [] : detectActiveGradeCols(rows, dataStart, studentRowIndexes);
+  studentRowIndexes.forEach(r => {
+    const row = rows[r] || [];
+    const grades = activeCols.map(c => ({ rowIdx: r, colIdx: c, value: parseGradeCell(row[c]).num }));
+    students.push({ rowIdx: r, name: row[1], grades });
+  });
+  return { students, dataStart, activeCols };
+}
+
+function calculate() {
+  showLoading('Ҳисоб ва ивазкунӣ рафта истодааст...');
+  setTimeout(() => {
+  try {
+  const sel = getSelected();
+  const globalTS = parseLocaleNumber(document.getElementById('tS').value);
+  const globalTA = parseLocaleNumber(document.getElementById('tA').value);
+  const globalTP = parseLocaleNumber(document.getElementById('tP').value);
+  const variation = +document.getElementById('varRange').value;
+  const manualZeros = Math.max(0, Math.floor(+document.getElementById('totalZeros').value || 0));
+
+  let allGroups = sel.map(name => {
+    const { students, dataStart } = getSheetStudents(name);
+    return { name, students, dataStart };
+  }).filter(g => g.students.length > 0);
+
+  const n = allGroups.length;
+  if (!n) return;
+
+  let seed = sel.join('').length * 137 + manualZeros * 97 + Math.round(globalTS * 100);
+  function rand() {
+    seed = (seed * 1664525 + 1013904223) & 0xffffffff;
+    return (seed >>> 0) / 0xffffffff;
+  }
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  const totals = allGroups.map(g => g.students.reduce((sum, st) => sum + st.grades.length, 0));
+  const totalCellsAll = totals.reduce((a, b) => a + b, 0);
+  const safeManualZeros = Math.min(manualZeros, totalCellsAll);
+
+  let zeroTargets = allGroups.map((g, i) => {
+    const exact = safeManualZeros * totals[i] / totalCellsAll;
+    return { base: Math.floor(exact), frac: exact - Math.floor(exact) };
+  });
+  let distributed = zeroTargets.reduce((a, z) => a + z.base, 0);
+  let remain = safeManualZeros - distributed;
+  const order = zeroTargets.map((z, i) => ({ i, score: z.frac + rand() * 0.25 })).sort((a, b) => b.score - a.score);
+  for (let k = 0; k < remain; k++) zeroTargets[order[k % order.length].i].base++;
+  const zeroBases = zeroTargets.map(z => z.base);
+
+  const allocResult = tryBuildExactAverageAlloc(allGroups, zeroBases, globalTS, globalTA, globalTP, variation, rand);
+  if (!allocResult || !allocResult.alloc || !allocResult.alloc.length) {
+    alert('Ҳал пайдо нашуд. Рақамҳоро каме дигар кунед.');
+    return;
+  }
+  const exactAlloc = allocResult.alloc;
+
+  modifiedSheets = {};
+  lastGroupStats = {};
+  lastStudentDetails = {};
+  const tbody = document.getElementById('groupTableBody');
+  tbody.innerHTML = '';
+  const log = [];
+  let sumZero = 0;
+  const rawGroupResults = [];
+
+  allGroups.forEach((group, i) => {
+    const total = totals[i];
+    const alloc = exactAlloc[i];
+    const zeroCount = Math.min(zeroBases[i], alloc.p, total);
+    const res = adjustSheet(group, alloc.s, alloc.a, alloc.p, zeroCount, rand, shuffle);
+    modifiedSheets[group.name] = workbook.Sheets[group.name];
+    rawGroupResults.push(res);
+    lastStudentDetails[group.name] = res.studentDetails || [];
+    sumZero += res.zeroCount;
+  });
+
+  const displayRows = actualStatsToRows(rawGroupResults);
+  let sumS = 0, sumA = 0, sumP = 0;
+  let weightedSCount = 0, weightedACount = 0, weightedPCount = 0;
+  displayRows.forEach((res, i) => {
+    lastGroupStats[res.name] = { s: res.s, a: res.a, p: res.p, count: res.count, zeroCount: res.zeroCount };
+    sumS += parseFloat(res.s);
+    sumA += parseFloat(res.a);
+    sumP += parseFloat(res.p);
+    weightedSCount += res.sCount;
+    weightedACount += res.aCount;
+    weightedPCount += res.pCount;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${res.name}</td><td>${res.count}</td><td class="tag-green">${res.s}%</td><td class="tag-orange">${res.a}%</td><td class="tag-red">${res.p}%</td>`;
+    tbody.appendChild(tr);
+    log.push(`<span class="ok">✓ ${res.name}: ${res.s}% / ${res.a}% / ${res.p}% · 0-ҳо: ${res.zeroCount}</span>`);
+  });
+
+  const avgSNum = safePercent(sumS, n);
+  const avgANum = safePercent(sumA, n);
+  const avgPNum = safePercent(sumP, n);
+  const exactOverallSNum = safePercent(weightedSCount, totalCellsAll);
+  const exactOverallANum = safePercent(weightedACount, totalCellsAll);
+  const exactOverallPNum = safePercent(weightedPCount, totalCellsAll);
+  const avgS = formatPct(avgSNum, 2);
+  const avgA = formatPct(avgANum, 2);
+  const avgP = formatPct(avgPNum, 2);
+  const exactOverallS = formatPct(exactOverallSNum, 2);
+  const exactOverallA = formatPct(exactOverallANum, 2);
+  const exactOverallP = formatPct(exactOverallPNum, 2);
+
+  lastOverallStats = { s: exactOverallS, a: exactOverallA, p: exactOverallP };
+  lastAverageStats = { s: avgS, a: avgA, p: avgP };
+  document.getElementById('weightedS').textContent = exactOverallS + '%';
+  document.getElementById('weightedA').textContent = exactOverallA + '%';
+  document.getElementById('weightedP').textContent = exactOverallP + '%';
+  document.getElementById('avgS').textContent = avgS + '%';
+  document.getElementById('avgA').textContent = avgA + '%';
+  document.getElementById('avgP').textContent = avgP + '%';
+
+  const totalRowS = calcMode === 'grade' ? exactOverallS : avgS;
+  const totalRowA = calcMode === 'grade' ? exactOverallA : avgA;
+  const totalRowP = calcMode === 'grade' ? exactOverallP : avgP;
+  const totalRowLabel = calcMode === 'grade' ? `УМУМӢ (${n} гурӯҳ · бо баҳо)` : `УМУМӢ (${n} гурӯҳ · бо гурӯҳ)`;
+
+  const trow = document.createElement('tr');
+  trow.className = 'total-row';
+  trow.innerHTML = `<td colspan="2">${totalRowLabel}</td><td>${totalRowS}%</td><td>${totalRowA}%</td><td>${totalRowP}%</td>`;
+  tbody.appendChild(trow);
+
+  log.push(`<span class="info">━━━ Реҷаи ҳисоб: ${calcMode === 'grade' ? 'бо ҳамаи баҳоҳо' : 'бо миёнаи гурӯҳҳо'}</span>`);
+  log.push(`<span class="info">━━━ МИЁНАИ гурӯҳҳо: Сифат=${avgS}% | Азхудкунӣ=${avgA}% | Пешрафт=${avgP}%</span>`);
+  log.push(`<span class="info">━━━ УМУМӢ аз рӯи ҳамаи баҳоҳо: Сифат=${exactOverallS}% | Азхудкунӣ=${exactOverallA}% | Пешрафт=${exactOverallP}%</span>`);
+  log.push(`<span class="info">🎯 Мақсади воридшуда: ${formatPct(globalTS, 2)}% / ${formatPct(globalTA, 2)}% / ${formatPct(globalTP, 2)}%</span>`);
+  if (allocResult.exact) {
+    log.push(`<span class="ok">🎯 Комбинатсияи дақиқ ёфт шуд.</span>`);
+  } else {
+    log.push(`<span class="warn">≈ Комбинатсияи дақиқ барои ҳамин гурӯҳҳо ёфт нашуд, наздиктарин вариант истифода шуд.</span>`);
+    log.push(`<span class="warn">≈ Фарқ аз мақсад: Сифат ${formatPct(Math.abs(allocResult.avgS - globalTS), 2)}% | Азхудкунӣ ${formatPct(Math.abs(allocResult.avgA - globalTA), 2)}% | Пешрафт ${formatPct(Math.abs(allocResult.avgP - globalTP), 2)}%</span>`);
+  }
+  log.push(`<span class="warn">🧮 Ҷамъи 0-ҳои воридшуда: ${safeManualZeros} | Дар файл гузошта шуд: ${sumZero}</span>`);
+  if (sumZero < safeManualZeros) log.push(`<span class="warn">⚠️ Қисме аз 0-ҳо татбиқ нашуданд, чунки нол танҳо дар ҳуҷайраҳои аллакай 0 нигоҳ дошта мешавад.</span>`);
+  log.push(`<span class="info">📌 Колонкаҳои ҷамъбасти ҳар донишҷӯ низ аз нав ҳисоб мешаванд, то Excel ва барнома як хел бароянд.</span>`);
+  log.push(`<span class="info">📌 Блоки чап — ҳисоб аз рӯи ҳамаи баҳоҳо. Блоки рост — миёнаи байни гурӯҳҳо.</span>`);
+
+  document.getElementById('logBox').innerHTML = log.join('<br>');
+  document.getElementById('resultCard').classList.remove('hidden');
+  if (sel.length === 1) renderStudentDetail(sel[0]); else hideStudentDetail();
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    console.error(err);
+    alert('Хато ҳангоми обработка. Боз як бор кӯшиш кун.');
+  } finally {
+    hideLoading();
+  }
+  }, 60);
+}
+
+function withDecimals(base, rand, min, max) {
+  const steps = [0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95];
+  let value = base + steps[Math.floor(rand() * steps.length)];
+  if (value < min) value = min;
+  if (value >= max) value = max - 0.05;
+  return +value.toFixed(2);
+}
+function randomSifat(rand) {
+  const bag = [75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,92,94,96,98,99];
+  const idx = Math.floor(Math.pow(rand(), 0.78) * bag.length);
+  return withDecimals(bag[Math.min(idx, bag.length - 1)], rand, 75, 100.01);
+}
+function randomAzkh(rand) {
+  const bag = [50,52,54,55,57,58,60,61,63,65,66,68,70,71,72,74];
+  return withDecimals(bag[Math.floor(rand() * bag.length)], rand, 50, 75);
+}
+function randomPesh(rand) {
+  const bag = [30,32,35,37,40,42,45,47,49];
+  return withDecimals(bag[Math.floor(rand() * bag.length)], rand, 0, 50);
+}
+
+
+function buildExactGroupOptions(total, zeroMin, targetS, targetA, variation) {
+  const options = [];
+  const wiggle = Math.max(8, variation * 3);
+  for (let s = 0; s <= total; s++) {
+    for (let a = 0; a <= total - s; a++) {
+      const p = total - s - a;
+      if (p < zeroMin) continue;
+      const pctS = s / total * 100;
+      const pctA = a / total * 100;
+      const pctP = p / total * 100;
+      if (Math.abs(pctS - targetS) > wiggle) continue;
+      if (Math.abs(pctA - targetA) > wiggle) continue;
+      if (Math.abs(pctP - (100 - targetS - targetA)) > wiggle) continue;
+      const bpS = Math.round(pctS * 100);
+      const bpA = Math.round(pctA * 100);
+      const bpP = 10000 - bpS - bpA;
+      options.push({
+        s, a, p, bpS, bpA, bpP,
+        dev: Math.abs(pctS - targetS) + Math.abs(pctA - targetA) + Math.abs(pctP - (100 - targetS - targetA))
+      });
+    }
+  }
+  options.sort((x, y) => x.dev - y.dev || x.bpS - y.bpS || x.bpA - y.bpA);
+  return options.slice(0, 2000);
+}
+
+function evaluateAlloc(alloc, targetSBPSum, targetABPSum, targetS, targetA) {
+  let sumS = 0, sumA = 0, variety = 0;
+  for (const a of alloc) {
+    sumS += a.bpS;
+    sumA += a.bpA;
+    variety += Math.abs(a.bpS / 100 - targetS) + Math.abs(a.bpA / 100 - targetA);
+  }
+  const diffS = targetSBPSum - sumS;
+  const diffA = targetABPSum - sumA;
+  return { diffS, diffA, score: Math.abs(diffS) + Math.abs(diffA) + variety * 0.02 };
+}
+
+
+function tryBuildExactAverageAlloc(allGroups, zeroCounts, targetS, targetA, targetP, variation, rand) {
+  const n = allGroups.length;
+  if (!n) return null;
+  const targetSBPSum = Math.round(targetS * 100) * n;
+  const targetABPSum = Math.round(targetA * 100) * n;
+  const groups = allGroups.map((g, i) => ({
+    total: g.students.reduce((sum, st) => sum + st.grades.length, 0),
+    zeroMin: zeroCounts[i] || 0,
+    name: g.name
+  }));
+
+  const optionSets = groups.map(g => buildExactGroupOptions(g.total, g.zeroMin, targetS, targetA, variation));
+  if (optionSets.some(opts => !opts.length)) return null;
+
+  let best = null;
+  let bestEval = null;
+
+  for (let restart = 0; restart < 28; restart++) {
+    const alloc = optionSets.map(opts => opts[Math.floor(rand() * Math.min(opts.length, 120))]);
+    let cur = evaluateAlloc(alloc, targetSBPSum, targetABPSum, targetS, targetA);
+    if (!bestEval || cur.score < bestEval.score) {
+      best = alloc.slice();
+      bestEval = { ...cur };
+    }
+    if (cur.diffS === 0 && cur.diffA === 0) {
+      return {
+        exact: true,
+        alloc: alloc.map(x => ({ s: x.s, a: x.a, p: x.p, bpS: x.bpS, bpA: x.bpA, bpP: x.bpP })),
+        avgS: alloc.reduce((sum, x) => sum + x.bpS / 100, 0) / n,
+        avgA: alloc.reduce((sum, x) => sum + x.bpA / 100, 0) / n,
+        avgP: alloc.reduce((sum, x) => sum + x.bpP / 100, 0) / n,
+        diffS: 0,
+        diffA: 0
+      };
+    }
+
+    for (let step = 0; step < 40000; step++) {
+      let improved = false;
+      const idxOrder = [...optionSets.keys()].sort(() => rand() - 0.5);
+      for (const i of idxOrder) {
+        const current = alloc[i];
+        const opts = optionSets[i];
+        const desiredS = current.bpS + cur.diffS;
+        const desiredA = current.bpA + cur.diffA;
+        let localBest = current;
+        let localEval = cur;
+        for (let k = 0; k < Math.min(opts.length, 420); k++) {
+          const cand = opts[k];
+          if (Math.abs(cand.bpS - desiredS) > 500 && Math.abs(cand.bpA - desiredA) > 500 && rand() < 0.9) continue;
+          alloc[i] = cand;
+          const ev = evaluateAlloc(alloc, targetSBPSum, targetABPSum, targetS, targetA);
+          if (ev.score + 1e-9 < localEval.score) {
+            localBest = cand;
+            localEval = ev;
+            if (ev.diffS === 0 && ev.diffA === 0) break;
+          }
+        }
+        alloc[i] = localBest;
+        cur = localEval;
+        if (!bestEval || cur.score < bestEval.score) {
+          best = alloc.slice();
+          bestEval = { ...cur };
+        }
+        if (cur.diffS === 0 && cur.diffA === 0) {
+          return {
+            exact: true,
+            alloc: alloc.map(x => ({ s: x.s, a: x.a, p: x.p, bpS: x.bpS, bpA: x.bpA, bpP: x.bpP })),
+            avgS: alloc.reduce((sum, x) => sum + x.bpS / 100, 0) / n,
+            avgA: alloc.reduce((sum, x) => sum + x.bpA / 100, 0) / n,
+            avgP: alloc.reduce((sum, x) => sum + x.bpP / 100, 0) / n,
+            diffS: 0,
+            diffA: 0
+          };
+        }
+        if (localBest !== current) {
+          improved = true;
+          break;
+        }
+      }
+      if (!improved) {
+        const j = Math.floor(rand() * alloc.length);
+        alloc[j] = optionSets[j][Math.floor(rand() * Math.min(optionSets[j].length, 180))];
+        cur = evaluateAlloc(alloc, targetSBPSum, targetABPSum, targetS, targetA);
+        if (!bestEval || cur.score < bestEval.score) {
+          best = alloc.slice();
+          bestEval = { ...cur };
+        }
+      }
+    }
+  }
+
+  if (!best) return null;
+  const avgS = best.reduce((sum, x) => sum + x.bpS / 100, 0) / n;
+  const avgA = best.reduce((sum, x) => sum + x.bpA / 100, 0) / n;
+  const avgP = best.reduce((sum, x) => sum + x.bpP / 100, 0) / n;
+  return {
+    exact: false,
+    alloc: best.map(x => ({ s: x.s, a: x.a, p: x.p, bpS: x.bpS, bpA: x.bpA, bpP: x.bpP })),
+    avgS,
+    avgA,
+    avgP,
+    diffS: bestEval ? bestEval.diffS : 0,
+    diffA: bestEval ? bestEval.diffA : 0
+  };
+}
+
+function actualStatsToRows(results) {
+  return results.map(r => ({
+    name: r.name,
+    count: r.count,
+    zeroCount: r.zeroCount,
+    s: r.s,
+    a: r.a,
+    p: r.p,
+    sCount: Number(r.sCount || 0),
+    aCount: Number(r.aCount || 0),
+    pCount: Number(r.pCount || 0)
+  }));
+}
+
+function adjustSheet(group, targetS, targetA, targetP, zeroCount, rand, shuffle) {
+  const { name, students, dataStart } = group;
+  const ws = workbook.Sheets[name];
+  const cells = [];
+  const rowStats = new Map();
+  const activeCols = [...new Set(students.flatMap(st => st.grades.map(g => g.colIdx)))].sort((a, b) => a - b);
+  const maxGradeCol = activeCols.length ? activeCols[activeCols.length - 1] : 9;
+  const summaryStartCol = maxGradeCol + 1; // баъд аз колонкаҳои баҳо: Сифат / Азхудкунӣ / Пешрафт / Ҳамагӣ
+
+  students.forEach(st => {
+    rowStats.set(st.rowIdx, { s: 0, a: 0, p: 0, z: 0, t: st.grades.length });
+    st.grades.forEach(g => cells.push({ rowIdx: g.rowIdx, colIdx: g.colIdx, orig: Number(g.value) || 0 }));
+  });
+  const total = cells.length;
+
+  targetS = Math.max(0, Math.min(total, Math.round(targetS)));
+  targetP = Math.max(0, Math.min(total - targetS, Math.round(targetP)));
+  targetA = Math.max(0, Math.min(total - targetS - targetP, Math.round(targetA)));
+  if (targetS + targetA + targetP !== total) {
+    targetA = total - targetS - targetP;
+  }
+
+  const zeroCells = cells.filter(cell => Number(cell.orig) === 0);
+  const nonZeroCells = cells.filter(cell => Number(cell.orig) !== 0);
+  const exactZero = Math.max(0, Math.min(zeroCount, targetP, zeroCells.length));
+  const positiveP = targetP - exactZero;
+  const finalValues = new Map();
+
+  const zeroPool = shuffle([...zeroCells]);
+
+  // Нол танҳо дар ҳамон ҳуҷайраҳое мемонад, ки аслан нол буданд.
+  // Баҳои мавҷудаи мусбатро ба нол табдил намедиҳем.
+  const keepZeroSet = new Set(zeroPool.slice(0, exactZero));
+  let ptr = 0;
+  for (const cell of keepZeroSet) finalValues.set(cell, 0);
+
+  const convertiblePool = shuffle([...nonZeroCells, ...zeroPool.slice(exactZero)]);
+  ptr = 0;
+  for (let i = 0; i < positiveP && ptr < convertiblePool.length; i++) finalValues.set(convertiblePool[ptr++], randomPesh(rand));
+  for (let i = 0; i < targetA && ptr < convertiblePool.length; i++) finalValues.set(convertiblePool[ptr++], randomAzkh(rand));
+  for (let i = 0; i < targetS && ptr < convertiblePool.length; i++) finalValues.set(convertiblePool[ptr++], randomSifat(rand));
+
+  const values = [];
+  cells.forEach(cell => {
+    const value = finalValues.get(cell) ?? randomPesh(rand);
+    values.push(value);
+    const stat = rowStats.get(cell.rowIdx);
+    const cfg = getAppSettings();
+    if (value >= cfg.sifatMin) stat.s++;
+    else if (value >= cfg.azkhMin) stat.a++;
+    else { stat.p++; if (value === 0) stat.z++; }
+
+    const cellRef = colIndexToLetter(cell.colIdx) + (cell.rowIdx + 1);
+    if (!ws[cellRef]) ws[cellRef] = {};
+    ws[cellRef].v = value;
+    ws[cellRef].t = 'n';
+    ws[cellRef].z = '0.00';
+    delete ws[cellRef].f;
+  });
+
+  const cfg = getAppSettings();
+  const countS = values.filter(v => v >= cfg.sifatMin).length;
+  const countA = values.filter(v => v >= cfg.azkhMin && v < cfg.sifatMin).length;
+  const countP = values.filter(v => v < cfg.azkhMin).length;
+  const countZero = values.filter(v => v === 0).length;
+
+  // Навсозии колонкаҳои ҷамъбасти ҳар донишҷӯ аз рӯи баҳои воқеии ивазшуда
+  const summaryHeaders = ['Сифат', 'Азхудкунӣ', 'Пешрафт', 'Нол', 'Ҳамагӣ'];
+  summaryHeaders.forEach((label, idx) => {
+    const ref = colIndexToLetter(summaryStartCol + idx) + (dataStart);
+    ws[ref] = { t: 's', v: label };
+  });
+  const studentDetails = [];
+  students.forEach(st => {
+    const stats = rowStats.get(st.rowIdx) || { s: 0, a: 0, p: 0, z: 0, t: st.grades.length };
+    studentDetails.push({ name: st.name, s: stats.s, a: stats.a, p: stats.p, z: stats.z, total: stats.t });
+    const rowNum = st.rowIdx + 1;
+    const refs = [
+      [summaryStartCol, stats.s],
+      [summaryStartCol + 1, stats.a],
+      [summaryStartCol + 2, stats.p],
+      [summaryStartCol + 3, stats.z],
+      [summaryStartCol + 4, stats.t]
+    ];
+    refs.forEach(([colIdx, val]) => {
+      const ref = colIndexToLetter(colIdx) + rowNum;
+      if (!ws[ref]) ws[ref] = {};
+      ws[ref].v = val;
+      ws[ref].t = 'n';
+      ws[ref].z = '0';
+      delete ws[ref].f;
+    });
+  });
+
+  const lastStudentRow = dataStart + students.length;
+  const sumRow = lastStudentRow + 1;
+  const frmRow = lastStudentRow + 2;
+  const totalCells = total;
+  const sPctExact = totalCells ? (countS / totalCells * 100) : 0;
+  const aPctExact = totalCells ? (countA / totalCells * 100) : 0;
+  const pPctExact = totalCells ? (countP / totalCells * 100) : 0;
+
+  // Ҷамъи колонкаҳои ҷамъбастӣ дар поён
+  const sumRefs = [countS, countA, countP, countZero, totalCells];
+  sumRefs.forEach((val, idx) => {
+    const ref = colIndexToLetter(summaryStartCol + idx) + sumRow;
+    if (!ws[ref]) ws[ref] = {};
+    ws[ref].v = val;
+    ws[ref].t = 'n';
+    ws[ref].z = '0';
+    delete ws[ref].f;
+  });
+
+  // Фоизҳо барои хондани дастӣ дар Excel
+  ws['A' + frmRow] = { t: 's', v: 'Сифат' };
+  ws['B' + frmRow] = { t: 'n', v: sPctExact, z: '0.00' };
+  ws['C' + frmRow] = { t: 's', v: 'Азхудкунӣ' };
+  ws['F' + frmRow] = { t: 'n', v: aPctExact, z: '0.00' };
+  ws['G' + frmRow] = { t: 's', v: 'Пешрафт' };
+  ws['J' + frmRow] = { t: 'n', v: pPctExact, z: '0.00' };
+  ws[colIndexToLetter(summaryStartCol + 4) + frmRow] = { t: 'n', v: sPctExact + aPctExact + pPctExact, z: '0.00' };
+
+  return {
+    name,
+    count: students.length,
+    s: formatPct(countS / total * 100, 2),
+    a: formatPct(countA / total * 100, 2),
+    p: formatPct(countP / total * 100, 2),
+    sCount: countS,
+    aCount: countA,
+    pCount: countP,
+    zeroCount: countZero,
+    studentDetails
+  };
+}
+
+
+function showTab(tab) {
+  const isMain = tab === 'main';
+  const isSubjects = tab === 'subjects';
+  const isSettings = tab === 'settings';
+  document.getElementById('mainPage').classList.toggle('hidden-page', !isMain);
+  document.getElementById('subjectsPage').classList.toggle('hidden-page', !isSubjects);
+  document.getElementById('settingsPage').classList.toggle('hidden-page', !isSettings);
+  document.getElementById('tabMainBtn').classList.toggle('active', isMain);
+  document.getElementById('tabSubjectsBtn').classList.toggle('active', isSubjects);
+  document.getElementById('tabSettingsBtn').classList.toggle('active', isSettings);
+}
+
+function getSubjectWorkbookStudents(book, name) {
+  const ws = book.Sheets[name];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  let students = [], dataStart = -1;
+  const studentRowIndexes = [];
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r] || [];
+    if (row[0] !== null && typeof row[0] === 'number' && row[0] >= 1 && row[0] <= 500 && row[1] && typeof row[1] === 'string') {
+      if (dataStart === -1) dataStart = r;
+      studentRowIndexes.push(r);
+    } else if (dataStart !== -1 && studentRowIndexes.length > 0) break;
+  }
+
+  const activeCols = dataStart === -1 ? [] : detectActiveGradeCols(rows, dataStart, studentRowIndexes);
+  studentRowIndexes.forEach(r => {
+    const row = rows[r] || [];
+    const grades = activeCols.map(c => {
+      const parsed = parseGradeCell(row[c]);
+      return { rowIdx: r, colIdx: c, value: parsed.num, empty: parsed.empty };
+    });
+    students.push({ rowIdx: r, name: row[1], grades });
+  });
+  return { students, dataStart, rows, activeCols };
+}
+
+function getSubjectHeaders(book, name, dataStart) {
+  const { rows, activeCols } = getSubjectWorkbookStudents(book, name);
+  const headerRowIdx = Math.max(0, dataStart - 1);
+  const row = rows[headerRowIdx] || [];
+  return activeCols.map((c, i) => {
+    const val = row[c];
+    return String(val || ('Фан ' + (i + 1))).trim() || ('Фан ' + (i + 1));
+  });
+}
+
+function buildSubjectGroups() {
+  const list = document.getElementById('subjectGroupList');
+  list.innerHTML = '';
+  currentSubjectGroup = null;
+  currentSubjectGroups = [];
+  document.getElementById('subjectPickCard').classList.add('hidden');
+  subjectWorkbook.SheetNames.forEach(name => {
+    const { students } = getSubjectWorkbookStudents(subjectWorkbook, name);
+    if (!students.length) return;
+    const chip = document.createElement('div');
+    chip.className = 'sheet-chip';
+    chip.textContent = name;
+    chip.dataset.sheet = name;
+    chip.onclick = () => {
+      chip.classList.toggle('selected');
+      const selected = getSelectedSubjectGroups();
+      currentSubjectGroups = selected;
+      currentSubjectGroup = selected[0] || null;
+      if (currentSubjectGroup) {
+        buildSubjectList();
+      } else {
+        document.getElementById('subjectPickCard').classList.add('hidden');
+        document.getElementById('subjectInfo').textContent = 'Ягон гурӯҳ интихоб нашудааст';
+        document.getElementById('subjectStats').style.display = 'none';
+        document.getElementById('subjectBarWrap').style.display = 'none';
+        document.getElementById('downloadSubjectsBtn').disabled = true;
+      }
+    };
+    list.appendChild(chip);
+  });
+  document.getElementById('subjectGroupCard').classList.remove('hidden');
+  document.getElementById('subjectGroupInfo').textContent = 'Метавонед як ё чанд гурӯҳро интихоб кунед. Фанҳои интихобшуда барои ҳамаи гурӯҳҳои интихобшуда ҷудо карда мешаванд.';
+}
+
+function getSelectedSubjectGroups() {
+  return [...document.querySelectorAll('#subjectGroupList .sheet-chip.selected')].map(el => el.dataset.sheet);
+}
+
+function selectAllSubjectGroups() {
+  document.querySelectorAll('#subjectGroupList .sheet-chip').forEach(c => c.classList.add('selected'));
+  currentSubjectGroups = getSelectedSubjectGroups();
+  currentSubjectGroup = currentSubjectGroups[0] || null;
+  if (currentSubjectGroup) buildSubjectList();
+}
+
+function selectNoSubjectGroups() {
+  document.querySelectorAll('#subjectGroupList .sheet-chip').forEach(c => c.classList.remove('selected'));
+  currentSubjectGroups = [];
+  currentSubjectGroup = null;
+  document.getElementById('subjectPickCard').classList.add('hidden');
+  document.getElementById('subjectGroupInfo').textContent = 'Ягон гурӯҳ интихоб нашудааст';
+}
+
+function buildSubjectList() {
+  if (!currentSubjectGroup) return;
+  const { students, dataStart } = getSubjectWorkbookStudents(subjectWorkbook, currentSubjectGroup);
+  const headers = getSubjectHeaders(subjectWorkbook, currentSubjectGroup, dataStart);
+  const list = document.getElementById('subjectList');
+  list.innerHTML = '';
+  headers.forEach((name, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'subject-chip selected';
+    chip.textContent = name;
+    chip.dataset.index = i;
+    chip.onclick = () => { chip.classList.toggle('selected'); updateSubjectStats(); };
+    list.appendChild(chip);
+  });
+  document.getElementById('subjectPickCard').classList.remove('hidden');
+  updateSubjectStats();
+}
+
+function getSelectedSubjectIndexes() {
+  return [...document.querySelectorAll('#subjectList .subject-chip.selected')].map(el => +el.dataset.index).sort((a,b)=>a-b);
+}
+
+function selectAllSubjects() {
+  document.querySelectorAll('#subjectList .subject-chip').forEach(c => c.classList.add('selected'));
+  updateSubjectStats();
+}
+
+function selectNoSubjects() {
+  document.querySelectorAll('#subjectList .subject-chip').forEach(c => c.classList.remove('selected'));
+  updateSubjectStats();
+}
+
+function getSubjectMetricsForIndexes(groupNames, indexes) {
+  const metrics = [];
+  if (!subjectWorkbook || !groupNames.length || !indexes.length) return metrics;
+  const headers = getSubjectHeaders(subjectWorkbook, groupNames[0], getSubjectWorkbookStudents(subjectWorkbook, groupNames[0]).dataStart);
+  indexes.forEach(idx => {
+    let s = 0, a = 0, p = 0;
+    groupNames.forEach(groupName => {
+      const { students } = getSubjectWorkbookStudents(subjectWorkbook, groupName);
+      students.forEach(st => {
+        const g = Number(st.grades[idx]?.value || 0);
+        if (g >= 75) s++;
+        else if (g >= 50) a++;
+        else p++;
+      });
+    });
+    const total = s + a + p;
+    metrics.push({
+      idx,
+      subject: headers[idx] || ('Фан ' + (idx + 1)),
+      total,
+      quality: total ? formatPct(s / total * 100, 2) : '0',
+      mastery: total ? formatPct(a / total * 100, 2) : '0',
+      progress: total ? formatPct(p / total * 100, 2) : '0'
+    });
+  });
+  return metrics;
+}
+
+function renderSubjectResultTable(metrics) {
+  const tbody = document.getElementById('subjectResultBody');
+  const table = document.getElementById('subjectResultTable');
+  const note = document.getElementById('subjectResultNote');
+  tbody.innerHTML = '';
+  if (!metrics.length) {
+    table.style.display = 'none';
+    note.style.display = 'none';
+    return;
+  }
+  metrics.forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m.subject}</td><td>${m.total}</td><td>${m.quality}%</td><td>${m.mastery}%</td><td>${m.progress}%</td>`;
+    tbody.appendChild(tr);
+  });
+  table.style.display = '';
+  note.style.display = '';
+}
+
+function updateSubjectStats() {
+  currentSubjectGroups = getSelectedSubjectGroups();
+  currentSubjectGroup = currentSubjectGroups[0] || null;
+  const indexes = getSelectedSubjectIndexes();
+  const btn = document.getElementById('downloadSubjectsBtn');
+  const pdfBtn = document.getElementById('previewSubjectsPdfBtn');
+  const pdfDlBtn = document.getElementById('downloadSubjectsPdfBtn');
+  if (!currentSubjectGroups.length || !indexes.length) {
+    document.getElementById('subjectInfo').textContent = !currentSubjectGroups.length ? 'Ягон гурӯҳ интихоб нашудааст' : 'Ягон фан интихоб нашудааст';
+    document.getElementById('subjectStats').style.display = 'none';
+    document.getElementById('subjectBarWrap').style.display = 'none';
+    renderSubjectResultTable([]);
+    btn.disabled = true;
+    if (pdfBtn) pdfBtn.disabled = true;
+    if (pdfDlBtn) pdfDlBtn.disabled = true;
+    return;
+  }
+  let qualityCount = 0, passCount = 0, progressCount = 0, totalStudents = 0;
+  currentSubjectGroups.forEach(groupName => {
+    const { students } = getSubjectWorkbookStudents(subjectWorkbook, groupName);
+    totalStudents += students.length;
+    students.forEach(st => {
+      indexes.forEach(idx => {
+        const g = Number(st.grades[idx]?.value || 0);
+        if (g >= 75) qualityCount++;
+        else if (g >= 50) passCount++;
+        else progressCount++;
+      });
+    });
+  });
+  const total = qualityCount + passCount + progressCount;
+  let sp = total ? formatPct(qualityCount / total * 100, 2) : '0';
+  let ap = total ? formatPct(passCount / total * 100, 2) : '0';
+  let pp = total ? formatPct(progressCount / total * 100, 2) : '0';
+  const ctx = getSubjectContext();
+  if (ctx && ctx.meta && ctx.allGroupsSelected && ctx.allSubjectsSelected) {
+    const ms = parseLocaleNumber(ctx.meta.main_s);
+    const ma = parseLocaleNumber(ctx.meta.main_a);
+    const mp = parseLocaleNumber(ctx.meta.main_p);
+    if (Number.isFinite(ms) && Number.isFinite(ma) && Number.isFinite(mp)) {
+      sp = formatPct(ms, 2);
+      ap = formatPct(ma, 2);
+      pp = formatPct(mp, 2);
+    }
+  } else if (ctx && ctx.meta && ctx.groupNames.length === 1 && ctx.allSubjectsSelected && ctx.meta.group_stats_json) {
+    try {
+      const groupStats = JSON.parse(ctx.meta.group_stats_json || '{}');
+      const gs = groupStats[ctx.groupNames[0]];
+      if (gs) {
+        sp = formatPct(parseLocaleNumber(gs.s), 2);
+        ap = formatPct(parseLocaleNumber(gs.a), 2);
+        pp = formatPct(parseLocaleNumber(gs.p), 2);
+      }
+    } catch (e) {}
+  }
+  document.getElementById('subjectInfo').textContent = `✓ ${currentSubjectGroups.length} гурӯҳ · 👥 ${totalStudents} нафар · 📚 ${indexes.length} фан · 📊 ${total} баҳо`;
+  document.getElementById('subS').textContent = sp + '%';
+  document.getElementById('subA').textContent = ap + '%';
+  document.getElementById('subP').textContent = pp + '%';
+  document.getElementById('subBarS').style.width = sp + '%';
+  document.getElementById('subBarA').style.width = ap + '%';
+  document.getElementById('subBarP').style.width = pp + '%';
+  document.getElementById('subjectStats').style.display = '';
+  document.getElementById('subjectBarWrap').style.display = '';
+  renderSubjectResultTable(getSubjectMetricsForIndexes(currentSubjectGroups, indexes));
+  btn.disabled = false;
+  if (pdfBtn) pdfBtn.disabled = false;
+  if (pdfDlBtn) pdfDlBtn.disabled = false;
+}
+
+function downloadSubjectFile() {
+  currentSubjectGroups = getSelectedSubjectGroups();
+  currentSubjectGroup = currentSubjectGroups[0] || null;
+  if (!subjectWorkbook || !currentSubjectGroups.length) return;
+  const selectedIdx = getSelectedSubjectIndexes();
+  if (!selectedIdx.length) return;
+
+  const newWB = XLSX.utils.book_new();
+  let totalStudentsAll = 0;
+
+  const metrics = getSubjectMetricsForIndexes(currentSubjectGroups, selectedIdx);
+  const summaryRows = [['Фан', 'Шумораи баҳо', 'Сифат %', 'Азхудкунӣ %', 'Пешрафт %']];
+  metrics.forEach(m => summaryRows.push([m.subject, m.total, m.quality, m.mastery, m.progress]));
+  if (metrics.length) {
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+    wsSummary['!cols'] = [{wch:28}, {wch:14}, {wch:12}, {wch:14}, {wch:12}];
+    XLSX.utils.book_append_sheet(newWB, wsSummary, 'Статистика фанҳо');
+  }
+
+  currentSubjectGroups.forEach(groupName => {
+    const { students, dataStart, rows } = getSubjectWorkbookStudents(subjectWorkbook, groupName);
+    totalStudentsAll += students.length;
+    const headers = getSubjectHeaders(subjectWorkbook, groupName, dataStart);
+    const aoa = [];
+    const activeCols = getSubjectWorkbookStudents(subjectWorkbook, groupName).activeCols;
+    const selectedCols = selectedIdx.map(i => activeCols[i]).filter(v => v !== undefined);
+
+    for (let r = 0; r < dataStart; r++) {
+      const srcRow = rows[r] || [];
+      const newRow = [];
+      newRow[0] = srcRow[0] ?? '';
+      newRow[1] = srcRow[1] ?? '';
+      selectedCols.forEach((col, idx) => { newRow[2 + idx] = srcRow[col] ?? (r === dataStart - 1 ? headers[selectedIdx[idx]] : ''); });
+      aoa.push(newRow);
+    }
+
+    let s=0, a=0, p=0;
+    students.forEach(st => {
+      const srcRow = rows[st.rowIdx] || [];
+      const newRow = [];
+      newRow[0] = srcRow[0] ?? '';
+      newRow[1] = srcRow[1] ?? '';
+      selectedCols.forEach((col, idx) => {
+        const value = srcRow[col] ?? '';
+        newRow[2 + idx] = value;
+        const parsed = parseGradeCell(value);
+        const g = parsed.num;
+        if (g >= 75) s++;
+        else if (g >= 50) a++;
+        else p++;
+      });
+      aoa.push(newRow);
+    });
+
+    const total = s + a + p;
+    aoa.push([]);
+    aoa.push(['Сифат', total ? +(s/total*100).toFixed(2) : 0, 'Азхудкунӣ', total ? +(a/total*100).toFixed(2) : 0, 'Пешрафт', total ? +(p/total*100).toFixed(2) : 0]);
+
+    const newWS = XLSX.utils.aoa_to_sheet(aoa);
+    newWS['!cols'] = [{wch:8}, {wch:28}, ...selectedIdx.map(() => ({wch:14}))];
+    XLSX.utils.book_append_sheet(newWB, newWS, groupName.slice(0, 31));
+  });
+
+  XLSX.writeFile(newWB, `Фанҳо_${currentSubjectGroups.length}_гурӯҳ_${selectedIdx.length}фан.xlsx`);
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+
+
+function estimateHeaderWidthPx(text) {
+  const clean = String(text || '').trim();
+  if (!clean) return 22;
+  const words = clean.split(/\s+/).filter(Boolean);
+  const longest = words.reduce((m, w) => Math.max(m, w.length), 0);
+  const lines = Math.max(1, Math.ceil(words.length / 2));
+  const score = Math.max(longest, Math.ceil(clean.length / Math.max(1, lines)));
+  return Math.max(24, Math.min(48, 14 + score * 2.1));
+}
+
+function estimateNameColWidthPx(students) {
+  const maxLen = (students || []).reduce((m, st) => Math.max(m, String((st && st.name) || '').length), 0);
+  return Math.max(210, Math.min(340, 130 + maxLen * 5.8));
+}
+
+function buildPrintColGroup(printHeaders, students, chosenSummaryLength) {
+  let html = '<colgroup>';
+  html += '<col style="width:34px">';
+  html += `<col style="width:${estimateNameColWidthPx(students)}px">`;
+  (printHeaders || []).forEach(h => {
+    html += `<col style="width:${estimateHeaderWidthPx(h)}px">`;
+  });
+  for (let i = 0; i < (chosenSummaryLength || 0); i++) html += '<col style="width:58px">';
+  html += '</colgroup>';
+  return html;
+}
+
+function formatVerticalHeaderText(text) {
+  const clean = String(text || '').trim();
+  if (!clean) return '';
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return escapeHtml(clean);
+  const parts = [];
+  let i = 0;
+  while (i < words.length) {
+    const take = words.length - i > 4 ? 2 : (words.length - i === 4 ? 2 : words.length - i);
+    parts.push(words.slice(i, i + take).join(' '));
+    i += take;
+  }
+  return parts.map(escapeHtml).join('<br>');
+}
+
+function getPrintableRowsFromWorkbook(book, name) {
+  const ws = book.Sheets[name];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const studentData = (book === subjectWorkbook) ? getSubjectWorkbookStudents(book, name) : getSheetStudentsFromBook(book, name);
+  const students = studentData.students || [];
+  const dataStart = studentData.dataStart || 0;
+  const sourceCols = studentData.activeCols || [];
+  const visibleCols = sourceCols.filter(c => {
+    const headerVal = String(((rows[Math.max(0, dataStart - 1)] || [])[c] ?? '')).trim();
+    const anyFilled = students.some(st => String(((rows[st.rowIdx] || [])[c] ?? '')).trim() !== '');
+    return headerVal !== '' || anyFilled;
+  });
+  const headers = visibleCols.map(c => {
+    const val = (rows[Math.max(0, dataStart - 1)] || [])[c];
+    return String(val || colIndexToLetter(c));
+  });
+  return { rows, students, activeCols: visibleCols, headers };
+}
+
+function getPreviewFontFamily(cfg) {
+  return cfg.docStyle === 'times' ? '"Times New Roman", serif' : (cfg.docStyle === 'arial' ? 'Arial, sans-serif' : 'Calibri, Arial, sans-serif');
+}
+
+function getPrintCss(cfg) {
+  const tableFont = Math.max(8, Number(cfg.tableFontSize || 11));
+  const verticalFont = Math.max(7, Number(cfg.verticalHeaderFontSize || 9));
+  const footerFont = Math.max(8, Number(cfg.footerFontSize || 14));
+  const titleFont = Math.max(tableFont + 4, 16);
+  const totalsFont = Math.max(tableFont, 10);
+  const nameFont = tableFont;
+  return `
+    body{margin:0;background:#dfe6ee;font-family:${getPreviewFontFamily(cfg)}}
+    .print-preview-shell{padding:12px}
+    .print-page{width:100%;max-width:198mm;margin:0 auto 14px;background:#fff;color:#000;padding:4mm 4mm 6mm;page-break-after:always;box-sizing:border-box;overflow:hidden}
+    .print-title{text-align:center;font-size:${titleFont}px;font-weight:700;margin-bottom:5px;line-height:1.2}
+    .print-table{width:100%;max-width:100%;border-collapse:collapse;table-layout:auto;font-size:${tableFont}px;margin:0 auto}
+    .print-table th,.print-table td{border:1px solid #222;padding:2px 4px;text-align:center;vertical-align:middle;white-space:nowrap}
+    .print-table .totals-row td{font-size:${totalsFont}px;background:#f5f5f5}
+    .print-table td.name-cell{text-align:left;font-size:${nameFont}px;white-space:normal}
+    .print-summary-doc,.print-summary{margin-top:18px;padding:0 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:${footerFont}px;font-weight:600}
+    .print-table th.col-no{width:36px}
+    .print-table th.col-name{min-width:180px}
+    .print-table th.col-sum{width:50px}
+    .print-table th.vertical-header{min-width:24px;height:158px;padding:0;overflow:hidden}
+    .print-table th.vertical-header .vh{writing-mode:vertical-rl;transform:rotate(180deg);white-space:normal;line-height:1.04;font-size:${verticalFont}px;padding:5px 2px;text-align:left;margin:auto;word-break:break-word}
+    .print-footer-doc{margin-top:38px;display:grid;gap:18px;font-size:${footerFont}px}
+    .footer-line{display:block;text-align:left}
+    .toolbar{position:sticky;top:0;background:#fff;padding:8px 12px;border-bottom:1px solid #ccc;display:flex;gap:8px;z-index:5}
+    .toolbar button{padding:7px 12px;font-size:13px;cursor:pointer}
+    @page{size:A4 portrait;margin:4mm}
+    @media print {
+      body{background:#fff}
+      .print-preview-shell{padding:0}
+      .print-page{max-width:none;width:100%;margin:0 auto;box-shadow:none;break-after:page;padding:2mm 2mm 5mm}
+      .toolbar{display:none}
+      .print-table{width:100%;font-size:${Math.max(tableFont-0.2,8)}px}
+      .print-table td.name-cell{font-size:${Math.max(nameFont-0.2,8)}px}
+      .print-table th.vertical-header .vh{font-size:${Math.max(verticalFont-0.2,7)}px}
+      .print-summary-doc,.print-summary{margin-top:20px;font-size:${footerFont}px;padding:0 20px}
+      .print-footer-doc{margin-top:42px;gap:20px;font-size:${footerFont}px}
+    }
+  `;
+}
+
+function buildPrintablePage(book, name, edited) {
+  const { rows, students, activeCols, headers } = getPrintableRowsFromWorkbook(book, name);
+  const cfg = getAppSettings();
+  const selectedPositions = getSelectedMainPrintPositions();
+  const picked = selectedPositions.map(pos => ({ col: activeCols[pos], header: headers[pos] })).filter(x => x.col !== undefined);
+  const printCols = picked.length ? picked.map(x => x.col) : activeCols.slice();
+  const printHeaders = picked.length ? picked.map(x => x.header) : headers.slice();
+  let groupStats = null;
+  if (edited && lastGroupStats[name]) {
+    groupStats = lastGroupStats[name];
+  } else {
+    const stats = calcStats(students);
+    const total = stats.total || 0;
+    groupStats = {
+      s: formatPct(safePercent(stats.s, total), 2),
+      a: formatPct(safePercent(stats.a, total), 2),
+      p: formatPct(safePercent(stats.p, total), 2)
+    };
+  }
+  const selectedSummaryPositions = getSelectedMainSummaryPositions();
+  const summaryDefs = [
+    { key: 's', label: 'Сиф.' },
+    { key: 'a', label: 'Азх.' },
+    { key: 'p', label: 'Пеш.' },
+    { key: 'z', label: 'Нол' },
+    { key: 'all', label: 'Ҳам.' }
+  ];
+  const chosenSummary = selectedSummaryPositions.length ? selectedSummaryPositions.map(i => summaryDefs[i]).filter(Boolean) : [];
+  const totalColumns = 2 + printCols.length + chosenSummary.length;
+  let html = `<div class="print-page"><table class="print-table">${buildPrintColGroup(printHeaders, students, chosenSummary.length)}<thead>`;
+  html += `<tr class="table-title-row"><th colspan="${totalColumns}">${escapeHtml(formatGroupPrintTitle(name))}</th></tr>`;
+  html += `<tr><th class="col-no">№</th><th class="col-name">Ному насаби донишҷӯ</th>`;
+  printHeaders.forEach(h => { html += `<th class="vertical-header"><div class="vh">${formatVerticalHeaderText(h)}</div></th>`; });
+  chosenSummary.forEach(col => { html += `<th class="col-sum">${col.label}</th>`; });
+  html += `</tr></thead><tbody>`;
+  let totalS = 0, totalA = 0, totalP = 0, totalZ = 0, totalAll = 0;
+  students.forEach(st => {
+    let s=0,a=0,p=0,z=0;
+    html += `<tr><td>${escapeHtml((rows[st.rowIdx] || [])[0])}</td><td class="name-cell">${escapeHtml(st.name)}</td>`;
+    printCols.forEach(c => {
+      const val = (rows[st.rowIdx] || [])[c];
+      const num = parseFloat(String(val).replace(',', '.'));
+      if (Number.isFinite(num)) {
+        if (num >= cfg.sifatMin) s++;
+        else if (num >= cfg.azkhMin) a++;
+        else { p++; if (num === 0) z++; }
+      }
+      html += `<td>${escapeHtml(val)}</td>`;
+    });
+    totalS += s; totalA += a; totalP += p; totalZ += z; totalAll += printCols.length;
+    const summaryValues = { s, a, p, z, all: printCols.length };
+    chosenSummary.forEach(col => { html += `<td class="col-sum">${summaryValues[col.key]}</td>`; });
+    html += `</tr>`;
+  });
+  if (chosenSummary.length) {
+    html += `<tr class="totals-row"><td colspan="${2 + printCols.length}" style="text-align:right;font-weight:700">Ҷамъ:</td>`;
+    const totalSummaryValues = { s: totalS, a: totalA, p: totalP, z: totalZ, all: totalAll };
+    chosenSummary.forEach(col => { html += `<td class="col-sum"><b>${totalSummaryValues[col.key]}</b></td>`; });
+    html += `</tr>`;
+  }
+  html += `</tbody></table>`;
+  html += `<div class="print-summary-doc"><span><b>Сифат:</b> ${escapeHtml(groupStats.s)}</span><span><b>Азхудкунӣ:</b> ${escapeHtml(groupStats.a)}</span><span><b>Пешрафт:</b> ${escapeHtml(groupStats.p)}</span></div>`;
+  if (cfg.printLine1 || cfg.printLine2 || cfg.printLine3) {
+    html += `<div class="print-footer-doc">`;
+    if (cfg.printLine1) html += `<div class="footer-line">${escapeHtml(cfg.printLine1)}</div>`;
+    if (cfg.printLine2) html += `<div class="footer-line">${escapeHtml(cfg.printLine2)}</div>`;
+    if (cfg.printLine3) html += `<div class="footer-line">${escapeHtml(cfg.printLine3)}</div>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function openPrintWindowHtml(title, bodyHtml, cfg, autoPrint) {
+  const docHtml = `<!DOCTYPE html><html lang="tg"><head><meta charset="UTF-8"><title>${escapeHtml(title || 'Print Preview')}</title><style>${getPrintCss(cfg)}</style></head><body><div class="toolbar"><button onclick="window.print()">ЧОП / PDF</button><button onclick="window.close()">ПӮШИДАН</button></div>${bodyHtml}${autoPrint ? '<script>window.addEventListener(\'load\',function(){setTimeout(function(){window.print();},300);});<\/script>' : ''}</body></html>`;
+  try {
+    const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (title || 'print') + '.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      alert('Браузер тирезаи навро набурд. Файли HTML скачат шуд — онро кушо ва чоп кун.');
+      return;
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    const win = window.open('', '_blank');
+    if (!win) {
+      alert('Тирезаи нав кушода нашуд. Дар браузер pop-up-ро иҷозат деҳ.');
+      return;
+    }
+    win.document.open();
+    win.document.write(docHtml);
+    win.document.close();
+  }
+}
+
+function openPrintPreview(book, edited) {
+  const cfg = getAppSettings();
+  const sel = getSelected();
+  if (!sel.length) {
+    alert('Аввал гурӯҳро интихоб кун.');
+    return;
+  }
+  const targetBook = book || workbook;
+  if (!targetBook) {
+    alert('Аввал файли Excel-ро ворид кун.');
+    return;
+  }
+  let pages = '<div class="print-preview-shell">';
+  sel.forEach(name => { pages += buildPrintablePage(targetBook, name, edited); });
+  pages += '</div>';
+  openPrintWindowHtml('PDF Preview', pages, cfg, false);
+}
+
+function buildSubjectPrintablePage(groupName, indexes) {
+  const { rows, students, activeCols, dataStart } = getSubjectWorkbookStudents(subjectWorkbook, groupName);
+  const selectedCols = indexes.map(i => activeCols[i]).filter(v => v !== undefined);
+  const headers = getSubjectHeaders(subjectWorkbook, groupName, dataStart);
+  const selectedHeaders = indexes.map(i => headers[i] || ('Фан ' + (i + 1)));
+  const cfg = getAppSettings();
+  const foot = [cfg.printLine1, cfg.printLine2, cfg.printLine3].filter(Boolean);
+  let sPct = '0', aPct = '0', pPct = '0';
+  try {
+    const metrics = getSubjectMetricsForIndexes([groupName], indexes);
+    let total=0, s=0, a=0, p=0;
+    metrics.forEach(m => {
+      const t = Number(m.total || 0);
+      total += t;
+      s += Math.round((parseLocaleNumber(m.quality) / 100) * t);
+      a += Math.round((parseLocaleNumber(m.mastery) / 100) * t);
+      p += Math.round((parseLocaleNumber(m.progress) / 100) * t);
+    });
+    if (total) {
+      sPct = formatPct(s / total * 100, 2);
+      aPct = formatPct(a / total * 100, 2);
+      pPct = formatPct(p / total * 100, 2);
+    }
+  } catch (e) {}
+  let html = `<div class="print-page"><div class="print-title">${escapeHtml(formatGroupPrintTitle(groupName))}</div>`;
+  html += `<div class="print-summary"><span><b>Сифат:</b> ${escapeHtml(sPct)}%</span><span><b>Азхудкунӣ:</b> ${escapeHtml(aPct)}%</span><span><b>Пешрафт:</b> ${escapeHtml(pPct)}%</span></div>`;
+  html += `<table class="print-table">${buildPrintColGroup(selectedHeaders, students, 5)}<thead><tr><th class="col-no">№</th><th class="col-name">Ному насаб</th>`;
+  selectedHeaders.forEach(h => { html += `<th class="vertical-header"><div class="vh">${formatVerticalHeaderText(h)}</div></th>`; });
+  html += `<th class="col-sum">Сиф.</th><th class="col-sum">Азх.</th><th class="col-sum">Пеш.</th><th class="col-sum">Нол</th><th class="col-sum">Ҳам.</th></tr></thead><tbody>`;
+  let totalS = 0, totalA = 0, totalP = 0, totalZ = 0, totalAll = 0;
+  students.forEach(st => {
+    let s=0,a=0,p=0,z=0;
+    html += `<tr><td>${escapeHtml((rows[st.rowIdx] || [])[0])}</td><td class="name-cell">${escapeHtml(st.name)}</td>`;
+    indexes.forEach(idx => {
+      const cell = st.grades[idx] || { value: '', empty: true };
+      const rawVal = cell.empty ? '' : cell.value;
+      const num = Number(cell.value || 0);
+      if (!cell.empty) {
+        if (num >= cfg.sifatMin) s++;
+        else if (num >= cfg.azkhMin) a++;
+        else { p++; if (num === 0) z++; }
+      }
+      html += `<td>${escapeHtml(rawVal === '' ? '' : rawVal)}</td>`;
+    });
+    totalS += s; totalA += a; totalP += p; totalZ += z; totalAll += indexes.length;
+    html += `<td>${s}</td><td>${a}</td><td>${p}</td><td>${z}</td><td>${indexes.length}</td></tr>`;
+  });
+  html += `<tr class="totals-row"><td colspan="${2 + indexes.length}" style="text-align:right;font-weight:700">Ҷамъ:</td><td><b>${totalS}</b></td><td><b>${totalA}</b></td><td><b>${totalP}</b></td><td><b>${totalZ}</b></td><td><b>${totalAll}</b></td></tr>`;
+  html += `</tbody></table>`;
+  if (foot.length) html += `<div class="print-footer-doc">` + foot.map(x => `<div class="footer-line">${escapeHtml(x)}</div>`).join('') + `</div>`;
+  html += `</div>`;
+  return html;
+}
+
+function openSubjectsPrintPreview(downloadPdf) {
+  const cfg = getAppSettings();
+  const groupNames = getSelectedSubjectGroups();
+  const indexes = getSelectedSubjectIndexes();
+  if (!subjectWorkbook) {
+    alert('Аввал файли Excel барои фанҳоро ворид кун.');
+    return;
+  }
+  if (!groupNames.length || !indexes.length) {
+    alert('Аввал гурӯҳ ва фанҳоро интихоб кун.');
+    return;
+  }
+  let pages = '<div class="print-preview-shell">';
+  groupNames.forEach(name => { pages += buildSubjectPrintablePage(name, indexes); });
+  pages += '</div>';
+  const title = groupNames.length === 1 ? formatGroupPrintTitle(groupNames[0]) : `Фанҳо_${groupNames.length}_гурӯҳ`;
+  openPrintWindowHtml(title, pages, cfg, downloadPdf);
+}
+
+function previewSubjectsPdf() {
+  openSubjectsPrintPreview(false);
+}
+
+function downloadSubjectsPdf() {
+  openSubjectsPrintPreview(true);
+}
+
+function previewOriginalPdf() {
+  if (!originalWorkbook) {
+    alert('Аввал файли Excel-ро ворид кун.');
+    return;
+  }
+  openPrintPreview(originalWorkbook, false);
+}
+
+function previewModifiedPdf() {
+  if (!Object.keys(modifiedSheets || {}).length) {
+    alert('Аввал тугмаи ИВАЗ КУН-ро пахш намо.');
+    return;
+  }
+  openPrintPreview(workbook, true);
+}
+
+
+
+function downloadFile() {
+  const sel = getSelected();
+  if (!sel.length) return;
+  const newWB = XLSX.utils.book_new();
+  sel.forEach(name => { if (modifiedSheets[name]) XLSX.utils.book_append_sheet(newWB, workbook.Sheets[name], name); });
+
+  const groupRows = [['Гурӯҳ', 'Нафар', 'Сифат %', 'Азхудкунӣ %', 'Пешрафт %']];
+  sel.forEach(name => {
+    const gs = lastGroupStats[name] || { count: 0, s: 0, a: 0, p: 0 };
+    groupRows.push([name, gs.count || 0, parseLocaleNumber(gs.s), parseLocaleNumber(gs.a), parseLocaleNumber(gs.p)]);
+  });
+  const start = 2;
+  const end = groupRows.length;
+  groupRows.push([]);
+  groupRows.push(['Умумӣ аз рӯи ҳамаи баҳоҳо', '', parseLocaleNumber(lastOverallStats.s), parseLocaleNumber(lastOverallStats.a), parseLocaleNumber(lastOverallStats.p)]);
+  groupRows.push(['Миёнаи гурӯҳҳо', '', parseLocaleNumber(lastAverageStats.s), parseLocaleNumber(lastAverageStats.a), parseLocaleNumber(lastAverageStats.p)]);
+  groupRows.push(['Реҷаи интихобшуда', '', calcMode === 'grade' ? 'Бо баҳо' : 'Бо гурӯҳ', '', '']);
+  groupRows.push(['Ҳадафи воридшуда', '', parseLocaleNumber(document.getElementById('tS').value), parseLocaleNumber(document.getElementById('tA').value), parseLocaleNumber(document.getElementById('tP').value)]);
+  const wsSummary = XLSX.utils.aoa_to_sheet(groupRows);
+  wsSummary['!cols'] = [{wch:24}, {wch:10}, {wch:14}, {wch:16}, {wch:14}];
+  XLSX.utils.book_append_sheet(newWB, wsSummary, 'Ҳисоб');
+
+  if (sel.length === 1 && (lastStudentDetails[sel[0]] || []).length) {
+    const detailRows = [['№', 'Донишҷӯ', 'Сифат', 'Азхудкунӣ', 'Пешрафт', 'Нол', 'Ҳамагӣ']];
+    lastStudentDetails[sel[0]].forEach((st, idx) => {
+      detailRows.push([idx + 1, st.name, st.s, st.a, st.p, st.z, st.total]);
+    });
+    const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
+    wsDetail['!cols'] = [{wch:6}, {wch:28}, {wch:10}, {wch:12}, {wch:10}, {wch:8}, {wch:8}];
+    XLSX.utils.book_append_sheet(newWB, wsDetail, 'Донишҷӯён');
+  }
+
+  const metaRows = [
+    ['main_s', String(lastOverallStats.s || 0)],
+    ['main_a', String(lastOverallStats.a || 0)],
+    ['main_p', String(lastOverallStats.p || 0)],
+    ['avg_s', String(lastAverageStats.s || 0)],
+    ['avg_a', String(lastAverageStats.a || 0)],
+    ['avg_p', String(lastAverageStats.p || 0)],
+    ['selected_groups', sel.join('|')],
+    ['group_stats_json', JSON.stringify(lastGroupStats || {})],
+    ['app_settings_json', JSON.stringify(getAppSettings())],
+    ['exported_at', new Date().toISOString()]
+  ];
+  XLSX.utils.book_append_sheet(newWB, XLSX.utils.aoa_to_sheet(metaRows), '_META');
+  XLSX.writeFile(newWB, `Баҳо_${sel.length}_гурӯҳ.xlsx`);
+}
+
+
+</script>
+</body>
+</html>
