@@ -140,12 +140,12 @@ function toggleTheme() {
   .mini-note { color:var(--muted); font-size:0.78rem; line-height:1.5; margin-top:8px; }
   .settings-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .settings-stack { display:grid; gap:10px; }
-  .settings-stack input, .settings-grid input, .settings-stack textarea {
+  .settings-stack input, .settings-grid input, .settings-stack textarea, .settings-stack select, .settings-grid select {
     width:100%; background:#1a2535; border:2px solid var(--border); border-radius:8px;
     color:var(--text); padding:10px 12px; font-size:1rem; font-family:inherit; outline:none;
   }
-  .settings-stack input:focus, .settings-grid input:focus, .settings-stack textarea:focus { border-color: var(--accent); }
-  .settings-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  .settings-stack input:focus, .settings-grid input:focus, .settings-stack textarea:focus, .settings-stack select:focus, .settings-grid select:focus { border-color: var(--accent); }
+  .settings-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
   .btn-half { flex:1 1 260px; }
   .print-preview-shell { background:#fff; color:#000; padding:20px; }
   .print-page { width:860px; margin:0 auto 24px; background:#fff; color:#000; padding:22px 22px 34px; page-break-after:always; }
@@ -170,12 +170,26 @@ function toggleTheme() {
   .signature-line { border-bottom:1px solid #222; min-height:24px; }
   .signature-label { white-space:nowrap; }
   @media print {
+      .print-footer,
+      .print-summary,
+      .signature-block,
+      .sign-block,
+      .footer-signatures,
+      .dean-block,
+      .remarks-block{
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .print-page > *:last-child{
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     @page { size:A4 portrait; margin:10mm; }
     body { background:#fff !important; }
     .print-preview-shell { padding:0; }
     .print-page { width:auto; margin:0; padding:0; box-shadow:none; }
   }
-  body.light .settings-stack input, body.light .settings-grid input, body.light .settings-stack textarea { background:#f7fbff; }
+  body.light .settings-stack input, body.light .settings-grid input, body.light .settings-stack textarea, body.light .settings-stack select, body.light .settings-grid select { background:#f7fbff; }
 
 
   .topbar { max-width: 1100px; margin: 0 auto 8px; display:flex; justify-content:flex-end; }
@@ -217,7 +231,7 @@ function toggleTheme() {
   .loading-overlay{position:fixed;inset:0;background:rgba(10,14,26,0.72);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
   .loading-overlay.show{display:flex}
   .loading-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px 26px;min-width:280px;text-align:center;box-shadow:0 14px 38px rgba(0,0,0,0.28)}
-  .loading-spinner{width:54px;height:54px;border:5px solid rgba(255,255,255,0.16);border-top-color:var(--accent);border-radius:50%;margin:0 auto 14px;animation:spin1 1s linear infinite}
+  .loading-spinner{width:54px;height:54px;border:5px solid rgba(255,255,255,0.16);border-top-color:var(--accent);border-radius:50%;margin:0 auto 8px;animation:spin1 1s linear infinite}
   .loading-title{font-family:'Orbitron', monospace;font-size:0.95rem;letter-spacing:1px;color:var(--accent);margin-bottom:6px}
   .loading-text{color:var(--muted);font-size:0.85rem;line-height:1.5}
   @keyframes spin1{to{transform:rotate(360deg)}}
@@ -497,6 +511,13 @@ function toggleTheme() {
         <option value="arial">Arial</option>
         <option value="calibri">Calibri</option>
       </select>
+      <div class="target-item">
+        <label>Ориентацияи саҳифа барои чоп</label>
+        <select id="cfgPrintOrientation">
+          <option value="portrait">Книжный</option>
+          <option value="landscape">Альбомный</option>
+        </select>
+      </div>
       <div class="settings-grid">
         <div class="target-item">
           <label>Шрифти ҷадвал (чоп/PDF)</label>
@@ -554,6 +575,7 @@ function getAppSettings() {
     studyYearText: String(saved.studyYearText || '2025-2026'),
     termText: String(saved.termText || 'нимсолаи аввали'),
     docStyle: String(saved.docStyle || 'times'),
+    printOrientation: String(saved.printOrientation || 'portrait'),
     tableFontSize: Number(saved.tableFontSize ?? 11),
     verticalHeaderFontSize: Number(saved.verticalHeaderFontSize ?? 9),
     footerFontSize: Number(saved.footerFontSize ?? 14)
@@ -572,6 +594,7 @@ function applySettingsToInputs() {
     cfgStudyYearText: s.studyYearText,
     cfgTermText: s.termText,
     cfgDocStyle: s.docStyle,
+    cfgPrintOrientation: s.printOrientation,
     cfgTableFontSize: s.tableFontSize,
     cfgVerticalHeaderFontSize: s.verticalHeaderFontSize,
     cfgFooterFontSize: s.footerFontSize
@@ -606,6 +629,7 @@ function saveAppSettings() {
     studyYearText: document.getElementById('cfgStudyYearText').value || '2025-2026',
     termText: document.getElementById('cfgTermText').value || 'нимсолаи аввали',
     docStyle: document.getElementById('cfgDocStyle').value || 'times',
+    printOrientation: document.getElementById('cfgPrintOrientation').value || 'portrait',
     tableFontSize: Math.max(8, Math.min(20, Number(document.getElementById('cfgTableFontSize').value || 11))),
     verticalHeaderFontSize: Math.max(7, Math.min(18, Number(document.getElementById('cfgVerticalHeaderFontSize').value || 9))),
     footerFontSize: Math.max(8, Math.min(22, Number(document.getElementById('cfgFooterFontSize').value || 14)))
@@ -1911,19 +1935,20 @@ function getPrintCss(cfg) {
   const tableFont = Math.max(8, Number(cfg.tableFontSize || 11));
   const verticalFont = Math.max(7, Number(cfg.verticalHeaderFontSize || 9));
   const footerFont = Math.max(8, Number(cfg.footerFontSize || 14));
-  const titleFont = Math.max(tableFont + 4, 16);
+  const orientation = String(cfg.printOrientation || 'portrait') === 'landscape' ? 'landscape' : 'portrait';
+  const titleFont = Math.max(tableFont + 2, 14);
   const totalsFont = Math.max(tableFont, 10);
   const nameFont = tableFont;
   return `
     body{margin:0;background:#dfe6ee;font-family:${getPreviewFontFamily(cfg)}}
     .print-preview-shell{padding:12px}
-    .print-page{width:100%;max-width:198mm;margin:0 auto 14px;background:#fff;color:#000;padding:4mm 4mm 6mm;page-break-after:always;box-sizing:border-box;overflow:hidden}
+    .print-page{width:100%;max-width:${orientation === 'landscape' ? '285mm' : '198mm'};margin:0 auto 8px;background:#fff;color:#000;padding:2.5mm 3mm 3.5mm;page-break-after:always;box-sizing:border-box;overflow:hidden}
     .print-title{text-align:center;font-size:${titleFont}px;font-weight:700;margin-bottom:5px;line-height:1.2}
     .print-table{width:100%;max-width:100%;border-collapse:collapse;table-layout:auto;font-size:${tableFont}px;margin:0 auto}
     .print-table th,.print-table td{border:1px solid #222;padding:2px 4px;text-align:center;vertical-align:middle;white-space:nowrap}
     .print-table .totals-row td{font-size:${totalsFont}px;background:#f5f5f5}
     .print-table td.name-cell{text-align:left;font-size:${nameFont}px;white-space:normal}
-    .print-summary-doc,.print-summary{margin-top:18px;padding:0 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:${footerFont}px;font-weight:600}
+    .print-summary-doc,.print-summary{margin-top:6px;padding:0 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:${footerFont}px;font-weight:600}
     .print-table th.col-no{width:36px}
     .print-table th.col-name{min-width:180px}
     .print-table th.col-sum{width:50px}
@@ -1933,15 +1958,15 @@ function getPrintCss(cfg) {
     .footer-line{display:block;text-align:left}
     .toolbar{position:sticky;top:0;background:#fff;padding:8px 12px;border-bottom:1px solid #ccc;display:flex;gap:8px;z-index:5}
     .toolbar button{padding:7px 12px;font-size:13px;cursor:pointer}
-    @page{size:A4 portrait;margin:4mm}
+    @page{size:A4 ${orientation};margin:3mm}
     @media print {
       body{background:#fff}
       .print-preview-shell{padding:0}
       .print-page{max-width:none;width:100%;margin:0 auto;box-shadow:none;break-after:page;padding:2mm 2mm 5mm}
       .toolbar{display:none}
       .print-table{width:100%;font-size:${Math.max(tableFont-0.2,8)}px}
-      .print-table td.name-cell{font-size:${Math.max(nameFont-0.2,8)}px}
-      .print-table th.vertical-header .vh{font-size:${Math.max(verticalFont-0.2,7)}px}
+      .print-table td.name-cell{font-size:${Math.max(nameFont-0.7,7.4)}px}
+      .print-table th.vertical-header .vh{font-size:${Math.max(verticalFont-0.8,6.4)}px}
       .print-summary-doc,.print-summary{margin-top:20px;font-size:${footerFont}px;padding:0 20px}
       .print-footer-doc{margin-top:42px;gap:20px;font-size:${footerFont}px}
     }
